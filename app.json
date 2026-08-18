@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Хвостик",
+    "slug": "hvostik",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "hvostik",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F1E8"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.hvostik.app",
+      "infoPlist": {
+        "CFBundleDisplayName": "Хвостик"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F1E8"
+      },
+      "package": "com.hvostik.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "Хвостик",
+      "shortName": "Хвостик",
+      "themeColor": "#E07A4A",
+      "backgroundColor": "#EFE6D9"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      "expo-asset"
+    ]
+  }
+}
