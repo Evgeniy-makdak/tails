@@ -43,7 +43,7 @@ export function ProfileScreen() {
           <Text style={styles.rowCopy}>{ownerName}</Text>
         </Card>
 
-        <Button label="Показать знакомство снова" variant="soft" onPress={replayIntro} />
+        <Button label="Показать первый вход" variant="soft" onPress={replayIntro} />
         <Button label="Выйти" variant="danger" onPress={logout} />
       </ScrollView>
     </SafeAreaView>

@@ -63,7 +63,7 @@ export function MapScreen() {
         <View style={styles.cardHead}>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardName}>{pet.name}</Text>
-            <Text style={styles.cardMeta}>Обновлено 15 сек. назад</Text>
+            <Text style={styles.cardMeta}>Обновлено 8 мин. назад</Text>
           </View>
           <Pressable style={styles.iconBtn}>
             <Ionicons name="volume-high-outline" size={18} color={colors.ink} />
@@ -75,24 +75,25 @@ export function MapScreen() {
 
         {expanded ? (
           <View style={styles.actions}>
-            <Pressable style={styles.sos} onPress={() => setSos(true)}>
-              <Ionicons name="notifications" size={18} color={colors.white} />
-              <Text style={styles.sosText}>Экстренный поиск</Text>
+            <Pressable style={styles.action} onPress={() => navigation.navigate('DrawZone', { kind: 'safe' })}>
+              <View style={styles.actionIcon}>
+                <View style={styles.redDot} />
+                <Ionicons name="shield-outline" size={18} color={colors.ink} />
+              </View>
+              <Text style={styles.actionLabel}>Безопасная зона</Text>
             </Pressable>
-            <View style={styles.row}>
-              <Pressable style={styles.mini} onPress={() => navigation.navigate('Geozones')}>
-                <View style={[styles.miniIcon, { backgroundColor: colors.greenSoft }]}>
-                  <Ionicons name="grid-outline" size={18} color={colors.green} />
-                </View>
-                <Text style={styles.miniLabel}>Геозона</Text>
-              </Pressable>
-              <Pressable style={styles.mini} onPress={() => navigation.navigate('WalkHistory')}>
-                <View style={[styles.miniIcon, { backgroundColor: colors.blueSoft }]}>
-                  <Ionicons name="git-branch-outline" size={18} color="#3B82F6" />
-                </View>
-                <Text style={styles.miniLabel}>История перемещений</Text>
-              </Pressable>
-            </View>
+            <Pressable style={styles.action} onPress={() => navigation.navigate('Geozones')}>
+              <View style={[styles.miniIcon, { backgroundColor: colors.greenSoft }]}>
+                <Ionicons name="grid-outline" size={18} color={colors.green} />
+              </View>
+              <Text style={styles.actionLabel}>Геозона</Text>
+            </Pressable>
+            <Pressable style={styles.action} onPress={() => navigation.navigate('WalkHistory')}>
+              <View style={[styles.miniIcon, { backgroundColor: colors.blueSoft }]}>
+                <Ionicons name="git-branch-outline" size={18} color="#3B82F6" />
+              </View>
+              <Text style={styles.actionLabel}>История перемещений</Text>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -240,31 +241,38 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 14,
-    gap: 10,
+    gap: 8,
   },
-  sos: {
-    backgroundColor: colors.red,
-    borderRadius: radius.md,
+  action: {
     minHeight: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  sosText: {
-    ...type.button,
-    color: colors.white,
-  },
-  row: {
-    flexDirection: 'row',
     gap: 10,
   },
-  mini: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    borderRadius: radius.md,
-    padding: 12,
-    gap: 8,
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.paper,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  redDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.red,
+    zIndex: 1,
+  },
+  actionLabel: {
+    ...type.subtitle,
+    color: colors.ink,
   },
   miniIcon: {
     width: 36,

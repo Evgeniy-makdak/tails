@@ -1,10 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { TailioBlob } from '../../components/brand/TailioMark';
 import { Button } from '../../components/ui/Button';
-import { colors, spacing, type } from '../../theme';
 
 type Props = {
   onStart: () => void;
@@ -12,38 +10,76 @@ type Props = {
 
 export function WelcomeScreen({ onStart }: Props) {
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <View style={styles.root}>
       <StatusBar style="dark" />
-      <View style={styles.body}>
-        <TailioBlob size={180} />
-        <Text style={styles.title}>Понимать.{'\n'}Заботиться.{'\n'}Быть рядом.</Text>
-      </View>
-      <View style={styles.footer}>
-        <Button label="Начать" onPress={onStart} />
-      </View>
-    </SafeAreaView>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
+        <View style={styles.header}>
+          <Text style={styles.logo}>TAILIO</Text>
+          <Text style={styles.title}>Понимать.{'\n'}Заботиться.{'\n'}Быть рядом.</Text>
+        </View>
+
+        <View style={styles.hero}>
+          <Image
+            source={require('../../../assets/brand/welcome-mascot.png')}
+            style={styles.mascot}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Button label="Начать" onPress={onStart} style={styles.cta} />
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: '#FFFFFF',
   },
-  body: {
+  safe: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: 28,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  logo: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 23,
+    lineHeight: 30,
+    letterSpacing: 0.4,
+    color: '#000000',
+    textTransform: 'uppercase',
   },
   title: {
-    ...type.display,
-    textAlign: 'center',
-    color: colors.ink,
+    marginTop: 28,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 32,
+    lineHeight: 40,
+    color: '#141414',
+  },
+  hero: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    minHeight: 0,
+  },
+  mascot: {
+    width: '108%',
+    height: '100%',
+    marginRight: -24,
   },
   footer: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  cta: {
+    alignSelf: 'center',
+    width: 343,
+    backgroundColor: '#8B7FFF',
   },
 });

@@ -5,7 +5,7 @@ export const colors = {
   inkSoft: '#3A3A3C',
   muted: '#8E8E93',
   line: '#EFEFEA',
-  purple: '#7B61FF',
+  purple: '#8B7FFF',
   purpleSoft: '#EFE8FF',
   green: '#1F9D55',
   greenSoft: '#E7F6EC',

@@ -23,7 +23,7 @@ export function ChatScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Tailio Чат</Text>
+        <Text style={styles.title}>Tailo-Чат</Text>
         <View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={styles.feed}>
@@ -49,7 +49,7 @@ export function ChatScreen({ navigation }: Props) {
       {menu ? (
         <View style={styles.menu}>
           <Text style={styles.menuItem}>Камера</Text>
-          <Text style={styles.menuItem}>Фото</Text>
+          <Text style={styles.menuItem}>Галерея</Text>
           <Text style={styles.menuItem}>Файл</Text>
         </View>
       ) : null}

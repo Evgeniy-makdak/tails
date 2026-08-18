@@ -11,6 +11,7 @@ export type AuthStackParamList = {
   Features: undefined;
   Owner: undefined;
   PetSetup: undefined;
+  Breed: undefined;
   Collar: undefined;
 };
 
@@ -32,7 +33,8 @@ export type AppStackParamList = {
   AddLog: { kind?: QuickActionKind };
   Documents: undefined;
   Geozones: undefined;
-  CreatePlace: undefined;
+  DrawZone: { kind?: 'safe' | 'danger' };
+  CreatePlace: { kind?: 'safe' | 'danger' };
   WalkHistory: undefined;
 };
 

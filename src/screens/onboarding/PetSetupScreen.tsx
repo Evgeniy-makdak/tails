@@ -9,13 +9,12 @@ import { colors, radius, spacing, type } from '../../theme';
 import type { PetKind, PetSex } from '../../types/pet';
 
 type Props = {
-  onNext: (payload: { name: string; breed: string; kind: PetKind; sex: PetSex }) => void;
+  onNext: () => void;
   onSkip: () => void;
 };
 
 export function PetSetupScreen({ onNext, onSkip }: Props) {
   const [name, setName] = useState('Персик');
-  const [breed, setBreed] = useState('Лабрадор');
   const [kind, setKind] = useState<PetKind>('dog');
   const [sex, setSex] = useState<PetSex>('Кобель');
 
@@ -30,9 +29,9 @@ export function PetSetupScreen({ onNext, onSkip }: Props) {
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>Расскажите о вашем питомце</Text>
-        <TextField label="Имя" value={name} onChangeText={setName} />
-        <TextField label="Порода" value={breed} onChangeText={setBreed} />
-        <TextField label="Дата рождения" placeholder="01.09.2023" />
+        <TextField label="Имя питомца" value={name} onChangeText={setName} />
+        <TextField label="Дата рождения" placeholder="01.09.2022" />
+        <TextField label="Вес" placeholder="кг" keyboardType="decimal-pad" />
         <Text style={styles.section}>Кто ваш питомец?</Text>
         <View style={styles.row}>
           <Choice label="Собака" active={kind === 'dog'} onPress={() => setKind('dog')} />
@@ -48,7 +47,7 @@ export function PetSetupScreen({ onNext, onSkip }: Props) {
         <Button
           label="Далее"
           disabled={!name.trim()}
-          onPress={() => onNext({ name: name.trim(), breed: breed.trim() || 'Лабрадор', kind, sex })}
+          onPress={onNext}
         />
         <Button label="Пропустить" variant="ghost" onPress={onSkip} />
       </View>

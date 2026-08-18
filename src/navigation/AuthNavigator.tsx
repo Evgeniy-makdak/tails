@@ -4,6 +4,7 @@ import { EmailScreen } from '../screens/auth/EmailScreen';
 import { OtpScreen } from '../screens/auth/OtpScreen';
 import { TermsScreen } from '../screens/auth/TermsScreen';
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { BreedScreen } from '../screens/onboarding/BreedScreen';
 import { CollarScreen } from '../screens/onboarding/CollarScreen';
 import { FeaturesScreen } from '../screens/onboarding/FeaturesScreen';
 import { OwnerScreen } from '../screens/onboarding/OwnerScreen';
@@ -86,17 +87,17 @@ export function AuthNavigator() {
         {({ navigation }) => (
           <PetSetupScreen
             onSkip={() => navigation.navigate('Collar')}
-            onNext={() => navigation.navigate('Collar')}
+            onNext={() => navigation.navigate('Breed')}
           />
         )}
       </Stack.Screen>
-      <Stack.Screen name="Collar">
+      <Stack.Screen name="Breed">
         {({ navigation }) => (
-          <CollarScreen
-            onSkip={login}
-            onConnect={login}
-          />
+          <BreedScreen onBack={() => navigation.goBack()} onNext={() => navigation.navigate('Collar')} />
         )}
+      </Stack.Screen>
+      <Stack.Screen name="Collar">
+        {() => <CollarScreen onSkip={login} onFinish={login} />}
       </Stack.Screen>
     </Stack.Navigator>
   );

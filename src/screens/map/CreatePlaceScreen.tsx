@@ -6,14 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'CreatePlace'>;
 
-export function CreatePlaceScreen({ navigation }: Props) {
-  const [name, setName] = useState('Дом');
-  const [address, setAddress] = useState('ул. Пражская, д. 15');
+export function CreatePlaceScreen({ navigation, route }: Props) {
+  const addGeozone = useAppStore((state) => state.addGeozone);
+  const kind = route.params?.kind ?? 'safe';
+  const [name, setName] = useState(kind === 'safe' ? 'Дом' : 'Парковка');
+  const [address, setAddress] = useState('ул. Пушкина, д. 15');
   const ready = name.trim().length > 0 && address.trim().length > 0;
 
   return (
@@ -41,7 +44,14 @@ export function CreatePlaceScreen({ navigation }: Props) {
         />
       </View>
       <View style={styles.footer}>
-        <Button label="Сохранить" disabled={!ready} onPress={() => navigation.goBack()} />
+        <Button
+          label="Сохранить"
+          disabled={!ready}
+          onPress={() => {
+            addGeozone({ title: name.trim(), address: address.trim(), kind });
+            navigation.navigate('Geozones');
+          }}
+        />
       </View>
     </SafeAreaView>
   );

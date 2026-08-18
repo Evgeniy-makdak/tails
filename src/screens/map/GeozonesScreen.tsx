@@ -8,13 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { TailioBlob } from '../../components/brand/TailioMark';
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
+import { useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
-
-const ZONES = [
-  { id: 'home', title: 'Дом', address: 'ул. Пражская, д. 15', kind: 'safe' as const },
-  { id: 'park', title: 'Парковка', address: 'ул. Пражская, д. 15', kind: 'danger' as const },
-];
 
 type Filter = 'all' | 'safe' | 'danger';
 
@@ -23,7 +19,8 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Geozones'>;
 export function GeozonesScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [hint, setHint] = useState(false);
-  const items = ZONES.filter((item) => filter === 'all' || item.kind === filter);
+  const zones = useAppStore((state) => state.geozones);
+  const items = zones.filter((item) => filter === 'all' || item.kind === filter);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -33,7 +30,7 @@ export function GeozonesScreen({ navigation }: Props) {
           <Text style={styles.back}>←</Text>
         </Pressable>
         <Text style={styles.title}>Геозоны</Text>
-        <Pressable onPress={() => navigation.navigate('CreatePlace')}>
+        <Pressable onPress={() => navigation.navigate('DrawZone', { kind: 'safe' })}>
           <Ionicons name="add" size={24} color={colors.ink} />
         </Pressable>
       </View>
@@ -54,7 +51,6 @@ export function GeozonesScreen({ navigation }: Props) {
         {items.length === 0 ? (
           <View style={styles.empty}>
             <TailioBlob size={120} />
-            <Text style={styles.emptyTitle}>Создайте безопасное место</Text>
             <Button label="+ Создать" onPress={() => setHint(true)} />
           </View>
         ) : (
@@ -70,19 +66,19 @@ export function GeozonesScreen({ navigation }: Props) {
       </ScrollView>
 
       <View style={styles.fabWrap}>
-        <Button label="+ Создать" onPress={() => navigation.navigate('CreatePlace')} />
+        <Button label="+ Создать" onPress={() => setHint(true)} />
       </View>
 
       <InAppSheet visible={hint} onClose={() => setHint(false)}>
         <Text style={styles.sheetTitle}>Безопасные и опасные зоны</Text>
         <Text style={styles.cardMeta}>
-          Безопасная зона — дом и двор. Опасная — дорога, парковка. При выходе придёт уведомление.
+          Можно создать зону вокруг дома или отметить опасные места. При выходе придёт уведомление.
         </Text>
         <Button
           label="Создать"
           onPress={() => {
             setHint(false);
-            navigation.navigate('CreatePlace');
+            navigation.navigate('DrawZone', { kind: 'safe' });
           }}
         />
       </InAppSheet>

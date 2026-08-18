@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import { ChatScreen } from '../screens/chat/ChatScreen';
 import { CreatePlaceScreen } from '../screens/map/CreatePlaceScreen';
+import { DrawZoneScreen } from '../screens/map/DrawZoneScreen';
 import { GeozonesScreen } from '../screens/map/GeozonesScreen';
 import { WalkHistoryScreen } from '../screens/map/WalkHistoryScreen';
 import {
@@ -72,6 +73,7 @@ export function RootNavigator() {
             <Stack.Screen name="AddLog" component={AddLogScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />
             <Stack.Screen name="Geozones" component={GeozonesScreen} />
+            <Stack.Screen name="DrawZone" component={DrawZoneScreen} />
             <Stack.Screen name="CreatePlace" component={CreatePlaceScreen} />
             <Stack.Screen name="WalkHistory" component={WalkHistoryScreen} />
           </Stack.Group>

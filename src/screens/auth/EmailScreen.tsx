@@ -39,11 +39,12 @@ export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
           placeholder="Введите почту"
           value={email}
           onChangeText={setEmail}
+          style={{ backgroundColor: '#FAFAFA', borderWidth: 0, borderRadius: 20 }}
         />
       </View>
       <View style={styles.footer}>
         <Button
-          label={mode === 'register' ? 'Зарегистрироваться' : 'Войти'}
+          label={mode === 'register' ? 'Далее' : 'Войти'}
           disabled={!valid}
           onPress={() => onSubmit(email.trim())}
         />

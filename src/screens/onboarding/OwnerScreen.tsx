@@ -8,13 +8,12 @@ import { TextField } from '../../components/ui/TextField';
 import { colors, spacing, type } from '../../theme';
 
 type Props = {
-  onNext: (name: string, city: string) => void;
+  onNext: (name: string) => void;
   onSkip: () => void;
 };
 
 export function OwnerScreen({ onNext, onSkip }: Props) {
   const [name, setName] = useState('');
-  const [city, setCity] = useState('');
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -27,11 +26,13 @@ export function OwnerScreen({ onNext, onSkip }: Props) {
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>Как вас зовут?</Text>
+        <Text style={styles.copy}>Давайте познакомимся, чтобы настроить Tailio для вас и вашего питомца</Text>
         <TextField placeholder="Имя" value={name} onChangeText={setName} />
-        <TextField placeholder="Город" value={city} onChangeText={setCity} />
+        <TextField placeholder="Фамилия" />
+        <TextField placeholder="Отчество (необязательно)" />
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" disabled={!name.trim()} onPress={() => onNext(name.trim(), city.trim())} />
+        <Button label="Далее" disabled={!name.trim()} onPress={() => onNext(name.trim())} />
         <Button label="Пропустить" variant="ghost" onPress={onSkip} />
       </View>
     </SafeAreaView>
@@ -67,7 +68,11 @@ const styles = StyleSheet.create({
   title: {
     ...type.title,
     color: colors.ink,
-    marginBottom: 8,
+  },
+  copy: {
+    ...type.body,
+    color: colors.muted,
+    marginBottom: 4,
   },
   footer: {
     paddingHorizontal: spacing.xl,

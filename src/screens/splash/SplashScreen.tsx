@@ -1,9 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-
-import { TailioMark } from '../../components/brand/TailioMark';
-import { colors, type } from '../../theme';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   onFinished: () => void;
@@ -11,14 +8,14 @@ type Props = {
 
 export function SplashScreen({ onFinished }: Props) {
   useEffect(() => {
-    const timer = setTimeout(onFinished, 1400);
+    const timer = setTimeout(onFinished, 1600);
     return () => clearTimeout(timer);
   }, [onFinished]);
 
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <TailioMark size={96} />
+      <Image source={require('../../../assets/brand/tailio-mark.png')} style={styles.mark} resizeMode="contain" />
       <Text style={styles.brand}>TAILIO</Text>
     </View>
   );
@@ -27,14 +24,21 @@ export function SplashScreen({ onFinished }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+  },
+  mark: {
+    width: 149,
+    height: 140,
   },
   brand: {
-    ...type.title,
-    letterSpacing: 4,
-    color: colors.ink,
+    marginTop: 18,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: 1.2,
+    color: '#8B7FFF',
+    textTransform: 'uppercase',
   },
 });
