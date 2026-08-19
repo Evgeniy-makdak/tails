@@ -1,6 +1,6 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { colors, type } from '../../theme';
+import { colors } from '../../theme';
 import type { Pet } from '../../types/pet';
 
 type Props = {
@@ -13,13 +13,19 @@ export function PetAvatar({ pet, size = 56 }: Props) {
 
   return (
     <View style={{ width: size, height: size }}>
-      {pet.photo ? (
-        <Image source={pet.photo} style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]} />
-      ) : (
-        <View style={[styles.fallback, { width: size, height: size, borderRadius: size / 2 }]}>
-          <Text style={styles.glyph}>{glyph}</Text>
-        </View>
-      )}
+      <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>
+        {pet.photo ? (
+          <Image
+            source={pet.photo}
+            style={[styles.image, { width: size, height: size }]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.fallback, { width: size, height: size }]}>
+            <Text style={styles.glyph}>{glyph}</Text>
+          </View>
+        )}
+      </View>
       <View
         style={[
           styles.dot,

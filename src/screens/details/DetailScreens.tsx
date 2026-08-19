@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -31,20 +32,62 @@ const METRIC_COPY: Record<MetricId, { title: string; unit: (petName: string) => 
 export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppStackParamList, 'Notifications'>) {
   const items = useAppStore((state) => state.notifications);
   const markNotificationsRead = useAppStore((state) => state.markNotificationsRead);
+  const markNotificationsUnread = useAppStore((state) => state.markNotificationsUnread);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const selectedItems = items.filter((item) => selected.includes(item.id));
+  const markUnreadMode = selectedItems.length > 0 && selectedItems.every((item) => item.read);
+  const lockUnread = selectedItems.length > 0 && selectedItems.every((item) => !item.read);
+  const lockRead = markUnreadMode;
+  const canSubmit = selected.length > 0;
+
+  const toggle = (id: string, unread: boolean) => {
+    if ((lockUnread && !unread) || (lockRead && unread)) {
+      return;
+    }
+    setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
       <Header title="Уведомления" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
-        {items.map((item) => (
-          <Card key={item.id}>
-            <Text style={styles.rowTitle}>{item.title}</Text>
-            <Text style={styles.copy}>{item.body}</Text>
-            <Text style={styles.meta}>{item.timeLabel}</Text>
-          </Card>
-        ))}
-        <Button label="Отметить прочитанными" onPress={markNotificationsRead} />
+        {items.map((item) => {
+          const unread = !item.read;
+          const checked = selected.includes(item.id);
+          const locked = (lockUnread && !unread) || (lockRead && unread);
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() => toggle(item.id, unread)}
+              style={[styles.notice, locked && styles.noticeLocked]}
+            >
+              <View style={[styles.radio, checked && styles.radioOn, locked && styles.radioLocked]}>
+                {checked ? <View style={styles.radioDot} /> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowTitle, unread ? styles.noticeTitleUnread : styles.noticeTitleRead]}>
+                  {item.title}
+                </Text>
+                <Text style={[styles.copy, unread && styles.noticeCopyUnread]}>{item.body}</Text>
+                <Text style={styles.meta}>{item.timeLabel}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+        <Button
+          label={markUnreadMode ? 'Отметить непрочитанными' : 'Отметить прочитанными'}
+          disabled={!canSubmit}
+          onPress={() => {
+            if (markUnreadMode) {
+              markNotificationsUnread(selected);
+            } else {
+              markNotificationsRead(selected);
+            }
+            setSelected([]);
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -235,15 +278,59 @@ const styles = StyleSheet.create({
     ...type.subtitle,
     color: colors.ink,
   },
+  noticeTitleUnread: {
+    fontFamily: 'Inter_700Bold',
+  },
+  noticeTitleRead: {
+    fontFamily: 'Inter_400Regular',
+  },
   copy: {
     ...type.body,
     color: colors.inkSoft,
     marginTop: 6,
   },
+  noticeCopyUnread: {
+    fontFamily: 'Inter_500Medium',
+    color: colors.ink,
+  },
   meta: {
     ...type.caption,
     color: colors.muted,
     marginTop: 8,
+  },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: colors.paper,
+    borderRadius: 22,
+    padding: 16,
+  },
+  noticeLocked: {
+    opacity: 0.42,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  radioOn: {
+    borderColor: colors.purple,
+  },
+  radioLocked: {
+    borderColor: colors.linenDeep,
+    backgroundColor: colors.linen,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.purple,
   },
   hero: {
     fontSize: 40,

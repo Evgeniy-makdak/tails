@@ -36,6 +36,7 @@ export type AppStackParamList = {
   DrawZone: { kind?: 'safe' | 'danger' };
   CreatePlace: { kind?: 'safe' | 'danger' };
   WalkHistory: undefined;
+  PetCard: { petId: string };
 };
 
 export type RootStackParamList = {

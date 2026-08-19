@@ -11,7 +11,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function MainTabNavigator() {
   return (
-    <Tab.Navigator tabBar={HvostikTabBar} screenOptions={{ headerShown: false }}>
+    <Tab.Navigator tabBar={(props) => <HvostikTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Health" component={HealthScreen} />

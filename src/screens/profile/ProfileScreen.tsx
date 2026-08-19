@@ -1,14 +1,25 @@
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PetAvatar } from '../../components/pet/PetAvatar';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
+import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
+
+type ProfileNav = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
+  NativeStackNavigationProp<AppStackParamList>
+>;
 
 export function ProfileScreen() {
+  const navigation = useNavigation<ProfileNav>();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
   const setActivePet = useAppStore((state) => state.setActivePet);
@@ -24,7 +35,13 @@ export function ProfileScreen() {
         <Text style={styles.title}>Питомец</Text>
 
         {pets.map((item) => (
-          <Pressable key={item.id} onPress={() => setActivePet(item.id)}>
+          <Pressable
+            key={item.id}
+            onPress={() => {
+              setActivePet(item.id);
+              navigation.navigate('PetCard', { petId: item.id });
+            }}
+          >
             <Card style={[styles.pet, item.id === pet.id && styles.petActive]}>
               <PetAvatar pet={item} size={52} />
               <View style={{ flex: 1 }}>

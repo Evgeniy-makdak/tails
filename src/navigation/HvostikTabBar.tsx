@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, type } from '../theme';
 import type { MainTabParamList } from '../types/navigation';
+import { useAppStore } from '../store/useAppStore';
 
 const ICONS: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMap> = {
   Home: 'home-outline',
@@ -20,6 +21,11 @@ const ACTIVE_ICONS: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMa
 };
 
 export function HvostikTabBar({ state, navigation }: BottomTabBarProps) {
+  const overlay = useAppStore((s) => s.homeOverlay);
+  if (overlay) {
+    return null;
+  }
+
   return (
     <View style={styles.wrap}>
       <View style={styles.bar}>

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { careTasks, notifications, pets, reminders } from '../data/mock';
+import { keyFromSource, sourceFromKey } from '../data/photos';
 import type { AppNotification, CareTask, HomeSegment, Pet, QuickActionKind, Reminder } from '../types/pet';
 
 export type GeoZone = {
@@ -27,6 +28,8 @@ type LogEntry = {
   createdAt: string;
 };
 
+type HomeOverlay = 'pets' | 'photos' | null;
+
 type AppState = {
   hasOnboarded: boolean;
   isAuthenticated: boolean;
@@ -34,6 +37,7 @@ type AppState = {
   activePetId: string;
   homeSegment: HomeSegment;
   selectedDayOffset: number;
+  homeOverlay: HomeOverlay;
   pets: Pet[];
   reminders: Reminder[];
   careTasks: CareTask[];
@@ -49,9 +53,15 @@ type AppState = {
   setActivePet: (petId: string) => void;
   setHomeSegment: (segment: HomeSegment) => void;
   setSelectedDayOffset: (offset: number) => void;
+  setHomeOverlay: (overlay: HomeOverlay) => void;
+  addPet: () => void;
+  updatePet: (petId: string, patch: Partial<Pet>) => void;
+  removePet: (petId: string) => void;
+  addPetPhoto: (petId: string, photo: number) => void;
   toggleCareTask: (id: string) => void;
   toggleReminder: (id: string) => void;
-  markNotificationsRead: () => void;
+  markNotificationsRead: (ids: string[]) => void;
+  markNotificationsUnread: (ids: string[]) => void;
   addLog: (kind: QuickActionKind) => void;
   addGeozone: (zone: Omit<GeoZone, 'id'>) => void;
   addWalk: () => void;
@@ -66,6 +76,7 @@ export const useAppStore = create<AppState>()(
       activePetId: 'persik',
       homeSegment: 'summary',
       selectedDayOffset: 0,
+      homeOverlay: null,
       pets,
       reminders,
       careTasks,
@@ -81,6 +92,80 @@ export const useAppStore = create<AppState>()(
       setActivePet: (petId) => set({ activePetId: petId }),
       setHomeSegment: (segment) => set({ homeSegment: segment }),
       setSelectedDayOffset: (offset) => set({ selectedDayOffset: offset }),
+      setHomeOverlay: (overlay) => set({ homeOverlay: overlay }),
+      addPet: () =>
+        set({
+          pets: [
+            ...get().pets,
+            {
+              id: `pet-${Date.now()}`,
+              name: 'Новый питомец',
+              kind: 'dog',
+              breed: '—',
+              ageLabel: '—',
+              sex: 'Кобель',
+              gallery: [],
+              birthDate: '01.01.2026',
+              weightKg: 5,
+              heightCm: 25,
+              bluetoothOn: false,
+              gpsOn: false,
+              healthAlertsOn: false,
+              vibrationOn: false,
+              ledOn: false,
+              sensitivity: 50,
+              pulseMin: 60,
+              pulseMax: 120,
+              tempMin: 37.5,
+              tempMax: 39,
+              online: false,
+              healthScore: 0,
+              wellbeing: 'Устройство не подключено',
+              collarConnected: false,
+              battery: 0,
+              pulse: 0,
+              pressure: '—',
+              temperature: 0,
+              sleepHours: 0,
+              sleepLabel: '—',
+              steps: 0,
+              walksToday: 0,
+              activeMinutes: 0,
+              runningMinutes: 0,
+              restHours: 0,
+              aiSummary: 'Добавьте фото и подключите ошейник.',
+            },
+          ],
+        }),
+      addPetPhoto: (petId, photo) =>
+        set({
+          pets: get().pets.map((item) => {
+            if (item.id !== petId) {
+              return item;
+            }
+            const gallery = (item.gallery ?? []).includes(photo) ? item.gallery ?? [] : [...(item.gallery ?? []), photo];
+            return {
+              ...item,
+              photo,
+              heroPhoto: photo,
+              gallery,
+            };
+          }),
+        }),
+      updatePet: (petId, patch) =>
+        set({
+          pets: get().pets.map((item) => (item.id === petId ? { ...item, ...patch } : item)),
+        }),
+      removePet: (petId) => {
+        const next = get().pets.filter((item) => item.id !== petId);
+        if (!next.length) {
+          return;
+        }
+        set({
+          pets: next,
+          activePetId: get().activePetId === petId ? next[0]!.id : get().activePetId,
+        });
+      },
       toggleCareTask: (id) =>
         set({
           careTasks: get().careTasks.map((task) =>
@@ -93,9 +178,17 @@ export const useAppStore = create<AppState>()(
             item.id === id ? { ...item, done: !item.done } : item,
           ),
         }),
-      markNotificationsRead: () =>
+      markNotificationsRead: (ids) =>
         set({
-          notifications: get().notifications.map((item) => ({ ...item, read: true })),
+          notifications: get().notifications.map((item) =>
+            ids.includes(item.id) ? { ...item, read: true } : item,
+          ),
+        }),
+      markNotificationsUnread: (ids) =>
+        set({
+          notifications: get().notifications.map((item) =>
+            ids.includes(item.id) ? { ...item, read: false } : item,
+          ),
         }),
       addLog: (kind) => {
         const petId = get().activePetId;
@@ -132,11 +225,47 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         activePetId: state.activePetId,
         logs: state.logs,
+        petMedia: Object.fromEntries(
+          state.pets.map((pet) => [
+            pet.id,
+            {
+              photo: keyFromSource(pet.photo),
+              heroPhoto: keyFromSource(pet.heroPhoto),
+              gallery: (pet.gallery ?? []).map(keyFromSource).filter((item): item is NonNullable<typeof item> => item != null),
+            },
+          ]),
+        ),
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Record<string, unknown>;
+        const media = (persisted.petMedia ?? {}) as Record<
+          string,
+          { photo?: string; heroPhoto?: string; gallery?: string[] }
+        >;
+        const rest = { ...persisted };
+        delete rest.petMedia;
+        return {
+          ...currentState,
+          ...rest,
+          pets: currentState.pets.map((pet) => {
+            const saved = media[pet.id];
+            if (!saved) {
+              return pet;
+            }
+            return {
+              ...pet,
+              photo: sourceFromKey(saved.photo) ?? pet.photo,
+              heroPhoto: sourceFromKey(saved.heroPhoto) ?? pet.heroPhoto,
+              gallery: (saved.gallery ?? []).map(sourceFromKey).filter((item): item is number => item != null),
+            };
+          }),
+        };
+      },
     },
   ),
 );
 
 export function useActivePet(): Pet {
-  return useAppStore((state) => state.pets.find((pet) => pet.id === state.activePetId) ?? state.pets[0]!);
+  const pet = useAppStore((state) => state.pets.find((item) => item.id === state.activePetId) ?? state.pets[0]!);
+  return { ...pet, gallery: pet.gallery ?? [] };
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { ChatScreen } from '../screens/chat/ChatScreen';
+import { PetCardScreen } from '../screens/profile/PetCardScreen';
 import { CreatePlaceScreen } from '../screens/map/CreatePlaceScreen';
 import { DrawZoneScreen } from '../screens/map/DrawZoneScreen';
 import { GeozonesScreen } from '../screens/map/GeozonesScreen';
@@ -76,6 +77,7 @@ export function RootNavigator() {
             <Stack.Screen name="DrawZone" component={DrawZoneScreen} />
             <Stack.Screen name="CreatePlace" component={CreatePlaceScreen} />
             <Stack.Screen name="WalkHistory" component={WalkHistoryScreen} />
+            <Stack.Screen name="PetCard" component={PetCardScreen} />
           </Stack.Group>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
