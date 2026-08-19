@@ -11,11 +11,10 @@ import { colors, spacing, type } from '../../theme';
 type Step = 'permission' | 'connect' | 'search' | 'done';
 
 type Props = {
-  onFinish: () => void;
-  onSkip: () => void;
+  onFinish: (connected: boolean) => void;
 };
 
-export function CollarScreen({ onFinish, onSkip }: Props) {
+export function CollarScreen({ onFinish }: Props) {
   const [step, setStep] = useState<Step>('permission');
 
   useEffect(() => {
@@ -47,7 +46,7 @@ export function CollarScreen({ onFinish, onSkip }: Props) {
             <Pressable style={styles.permBtn} onPress={() => setStep('connect')}>
               <Text style={styles.permAllow}>Разрешить, пока используется приложение</Text>
             </Pressable>
-            <Pressable style={styles.permBtn} onPress={onSkip}>
+            <Pressable style={styles.permBtn} onPress={() => onFinish(false)}>
               <Text style={styles.permDeny}>Не разрешать</Text>
             </Pressable>
           </View>
@@ -65,7 +64,7 @@ export function CollarScreen({ onFinish, onSkip }: Props) {
           </View>
           <View style={styles.footer}>
             <Button label="Подключить" onPress={() => setStep('search')} />
-            <Button label="Пропустить" variant="ghost" onPress={onSkip} />
+            <Button label="Пропустить" variant="ghost" onPress={() => onFinish(false)} />
           </View>
         </>
       ) : null}
@@ -90,7 +89,7 @@ export function CollarScreen({ onFinish, onSkip }: Props) {
             <Text style={styles.copy}>Можно переходить к главной — всё готово</Text>
           </View>
           <View style={styles.footer}>
-            <Button label="Вперёд, к новым делам!" onPress={onFinish} />
+            <Button label="Вперёд, к новым делам!" onPress={() => onFinish(true)} />
           </View>
         </>
       ) : null}

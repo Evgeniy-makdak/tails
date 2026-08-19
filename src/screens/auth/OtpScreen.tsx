@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
+import { DEMO_OTP } from '../../data/auth';
 import { colors, radius, spacing, type } from '../../theme';
 
 type Props = {
@@ -12,13 +13,23 @@ type Props = {
   onBack: () => void;
 };
 
-const DEMO_CODE = '111111';
-
 export function OtpScreen({ email, onNext, onBack }: Props) {
   const inputRef = useRef<TextInput>(null);
-  const [code, setCode] = useState(DEMO_CODE);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(false);
   const digits = code.replace(/\D/g, '').slice(0, 6);
   const ready = digits.length === 6;
+
+  const submit = () => {
+    if (digits !== DEMO_OTP) {
+      setCode('');
+      setError(true);
+      requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
+    setError(false);
+    onNext();
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -31,12 +42,19 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
         <Text style={styles.copy}>
           Отправили код вам на почту{email ? `\n${email}` : ''}
         </Text>
-        <Text style={styles.hint}>Пока письма не уходят. Демо-код уже подставлен: {DEMO_CODE}</Text>
+        <Text style={styles.hint}>Пока письма не уходят. Введите код {DEMO_OTP} вручную</Text>
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.row}>
           {Array.from({ length: 6 }).map((_, index) => (
-            <View key={index} style={[styles.box, digits[index] ? styles.boxFilled : null]}>
-              <Text style={styles.digit}>{digits[index] ?? ''}</Text>
+            <View
+              key={index}
+              style={[
+                styles.box,
+                digits[index] ? styles.boxFilled : null,
+                error ? styles.boxError : null,
+              ]}
+            >
+              <Text style={[styles.digit, error && styles.digitError]}>{digits[index] ?? ''}</Text>
             </View>
           ))}
           <TextInput
@@ -45,14 +63,20 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
             keyboardType="number-pad"
             maxLength={6}
             value={digits}
-            onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+            onChangeText={(value) => {
+              setCode(value.replace(/\D/g, '').slice(0, 6));
+              if (error) {
+                setError(false);
+              }
+            }}
             style={styles.overlay}
             caretHidden
           />
         </Pressable>
+        {error ? <Text style={styles.error}>Неверный код. Введите код повторно</Text> : null}
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" disabled={!ready} onPress={onNext} />
+        <Button label="Далее" disabled={!ready} onPress={submit} />
       </View>
     </SafeAreaView>
   );
@@ -107,9 +131,19 @@ const styles = StyleSheet.create({
   boxFilled: {
     borderColor: colors.purple,
   },
+  boxError: {
+    borderColor: colors.red,
+  },
   digit: {
     ...type.title,
     fontSize: 22,
+  },
+  digitError: {
+    color: colors.red,
+  },
+  error: {
+    ...type.body,
+    color: colors.red,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

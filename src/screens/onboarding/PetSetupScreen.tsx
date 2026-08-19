@@ -1,22 +1,23 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
-import type { PetKind, PetSex } from '../../types/pet';
 
 type Props = {
   onNext: () => void;
   onSkip: () => void;
+  onPickBreed: () => void;
 };
 
-export function PetSetupScreen({ onNext, onSkip }: Props) {
-  const [name, setName] = useState('Персик');
-  const [kind, setKind] = useState<PetKind>('dog');
-  const [sex, setSex] = useState<PetSex>('Кобель');
+export function PetSetupScreen({ onNext, onSkip, onPickBreed }: Props) {
+  const draft = useAppStore((state) => state.onboarding);
+  const patchOnboarding = useAppStore((state) => state.patchOnboarding);
+  const setOnboardingSex = useAppStore((state) => state.setOnboardingSex);
+  const boy = draft.sex === 'Кобель' || draft.sex === 'Кот';
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -29,26 +30,40 @@ export function PetSetupScreen({ onNext, onSkip }: Props) {
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>Расскажите о вашем питомце</Text>
-        <TextField label="Имя питомца" value={name} onChangeText={setName} />
-        <TextField label="Дата рождения" placeholder="01.09.2022" />
-        <TextField label="Вес" placeholder="кг" keyboardType="decimal-pad" />
+        <TextField
+          label="Имя питомца"
+          placeholder="Имя питомца"
+          value={draft.petName}
+          onChangeText={(value) => patchOnboarding({ petName: value })}
+        />
+        <Pressable onPress={onPickBreed}>
+          <TextField
+            label="Порода питомца"
+            placeholder="Порода питомца"
+            value={draft.breed}
+            editable={false}
+            pointerEvents="none"
+          />
+        </Pressable>
+        <TextField
+          label="Дата рождения"
+          placeholder="01.01.2020"
+          value={draft.birthDate}
+          onChangeText={(value) => patchOnboarding({ birthDate: value })}
+        />
         <Text style={styles.section}>Кто ваш питомец?</Text>
         <View style={styles.row}>
-          <Choice label="Собака" active={kind === 'dog'} onPress={() => setKind('dog')} />
-          <Choice label="Кошка" active={kind === 'cat'} onPress={() => setKind('cat')} />
+          <Choice label="Собака" active={draft.kind === 'dog'} onPress={() => setOnboardingSex('dog', boy)} />
+          <Choice label="Кошка" active={draft.kind === 'cat'} onPress={() => setOnboardingSex('cat', boy)} />
         </View>
         <Text style={styles.section}>Пол питомца</Text>
         <View style={styles.row}>
-          <Choice label="Мальчик" active={sex === 'Кобель' || sex === 'Кот'} onPress={() => setSex(kind === 'cat' ? 'Кот' : 'Кобель')} />
-          <Choice label="Девочка" active={sex === 'Сука' || sex === 'Кошка'} onPress={() => setSex(kind === 'cat' ? 'Кошка' : 'Сука')} />
+          <Choice label="Мальчик" active={boy} onPress={() => setOnboardingSex(draft.kind, true)} />
+          <Choice label="Девочка" active={!boy} onPress={() => setOnboardingSex(draft.kind, false)} />
         </View>
       </View>
       <View style={styles.footer}>
-        <Button
-          label="Далее"
-          disabled={!name.trim()}
-          onPress={onNext}
-        />
+        <Button label="Далее" disabled={!draft.petName.trim()} onPress={onNext} />
         <Button label="Пропустить" variant="ghost" onPress={onSkip} />
       </View>
     </SafeAreaView>

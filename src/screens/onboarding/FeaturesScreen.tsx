@@ -11,8 +11,8 @@ type Props = {
 };
 
 const ITEMS = [
-  { icon: 'shield-checkmark-outline' as const, title: 'Безопасные зоны', copy: 'Дом, двор и места, где питомцу можно гулять спокойно' },
-  { icon: 'pulse-outline' as const, title: 'Анализ активности', copy: 'Пульс, сон и движение — чтобы понимать самочувствие' },
+  { icon: 'location-outline' as const, title: 'Live геопозиция и безопасные зоны', copy: 'Дом, двор и места, где питомцу можно гулять спокойно' },
+  { icon: 'pulse-outline' as const, title: 'Анализ состояния', copy: 'Пульс, сон и движение — чтобы понимать самочувствие' },
   { icon: 'notifications-outline' as const, title: 'SOS-уведомления', copy: 'Мгновенный сигнал, если питомец вне зоны или в стрессе' },
 ];
 

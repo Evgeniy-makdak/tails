@@ -16,8 +16,9 @@ import type { AuthStackParamList } from '../types/navigation';
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export function AuthNavigator() {
-  const login = useAppStore((state) => state.login);
-  const setOwnerName = useAppStore((state) => state.setOwnerName);
+  const startRegistration = useAppStore((state) => state.startRegistration);
+  const loginWithEmail = useAppStore((state) => state.loginWithEmail);
+  const finishOnboarding = useAppStore((state) => state.finishOnboarding);
 
   return (
     <Stack.Navigator
@@ -32,7 +33,10 @@ export function AuthNavigator() {
       </Stack.Screen>
       <Stack.Screen name="Welcome">
         {({ navigation }) => (
-          <WelcomeScreen onStart={() => navigation.navigate('Email', { mode: 'register' })} />
+          <WelcomeScreen
+            onStart={() => navigation.navigate('Email', { mode: 'register' })}
+            onLogin={() => navigation.navigate('Email', { mode: 'login' })}
+          />
         )}
       </Stack.Screen>
       <Stack.Screen name="Email">
@@ -56,9 +60,10 @@ export function AuthNavigator() {
             onBack={() => navigation.goBack()}
             onNext={() => {
               if (route.params.mode === 'login') {
-                login();
+                loginWithEmail(route.params.email);
                 return;
               }
+              startRegistration(route.params.email);
               navigation.navigate('Terms');
             }}
           />
@@ -76,10 +81,7 @@ export function AuthNavigator() {
         {({ navigation }) => (
           <OwnerScreen
             onSkip={() => navigation.navigate('PetSetup')}
-            onNext={(name) => {
-              setOwnerName(name);
-              navigation.navigate('PetSetup');
-            }}
+            onNext={() => navigation.navigate('PetSetup')}
           />
         )}
       </Stack.Screen>
@@ -87,17 +89,18 @@ export function AuthNavigator() {
         {({ navigation }) => (
           <PetSetupScreen
             onSkip={() => navigation.navigate('Collar')}
-            onNext={() => navigation.navigate('Breed')}
+            onNext={() => navigation.navigate('Collar')}
+            onPickBreed={() => navigation.navigate('Breed')}
           />
         )}
       </Stack.Screen>
       <Stack.Screen name="Breed">
         {({ navigation }) => (
-          <BreedScreen onBack={() => navigation.goBack()} onNext={() => navigation.navigate('Collar')} />
+          <BreedScreen onBack={() => navigation.goBack()} onSave={() => navigation.goBack()} />
         )}
       </Stack.Screen>
       <Stack.Screen name="Collar">
-        {() => <CollarScreen onSkip={login} onFinish={login} />}
+        {() => <CollarScreen onFinish={finishOnboarding} />}
       </Stack.Screen>
     </Stack.Navigator>
   );

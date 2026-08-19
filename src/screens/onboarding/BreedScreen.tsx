@@ -5,29 +5,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 
-const BREEDS = [
-  'Лабрадор',
-  'Золотистый ретривер',
-  'Корги',
-  'Хаски',
-  'Овчарка',
-  'Такса',
-  'Мопс',
-  'Британская',
-  'Сфинкс',
-  'Мейн-кун',
-];
+import { BREEDS } from '../../data/breeds';
 
 type Props = {
-  onNext: (breed: string) => void;
+  onSave: () => void;
   onBack: () => void;
 };
 
-export function BreedScreen({ onNext, onBack }: Props) {
+export function BreedScreen({ onSave, onBack }: Props) {
+  const breed = useAppStore((state) => state.onboarding.breed);
+  const patchOnboarding = useAppStore((state) => state.patchOnboarding);
   const [query, setQuery] = useState('');
-  const [picked, setPicked] = useState('Лабрадор');
   const list = BREEDS.filter((item) => item.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
@@ -41,18 +32,18 @@ export function BreedScreen({ onNext, onBack }: Props) {
         <View style={{ width: 28 }} />
       </View>
       <View style={styles.search}>
-        <TextField placeholder="Найти породу" value={query} onChangeText={setQuery} />
+        <TextField placeholder="Введите название вашей породы" value={query} onChangeText={setQuery} />
       </View>
       <ScrollView contentContainerStyle={styles.list}>
         {list.map((item) => (
-          <Pressable key={item} style={styles.row} onPress={() => setPicked(item)}>
+          <Pressable key={item} style={styles.row} onPress={() => patchOnboarding({ breed: item })}>
             <Text style={styles.name}>{item}</Text>
-            <View style={[styles.radio, picked === item && styles.radioOn]} />
+            <View style={[styles.radio, breed === item && styles.radioOn]} />
           </Pressable>
         ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label="Сохранить" onPress={() => onNext(picked)} />
+        <Button label="Сохранить" disabled={!breed.trim()} onPress={onSave} />
       </View>
     </SafeAreaView>
   );

@@ -1,6 +1,6 @@
 import type { ActivityGoal, AppNotification, CareTask, Pet, Reminder, ScheduleEvent, SleepPhase } from '../types/pet';
 
-const deviceOff = {
+export const deviceOff = {
   bluetoothOn: false,
   gpsOn: false,
   healthAlertsOn: false,

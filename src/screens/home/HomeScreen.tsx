@@ -8,7 +8,9 @@ import { useEffect, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PetProfileForm } from '../../components/pet/PetProfileForm';
 import { Button } from '../../components/ui/Button';
+import { emptyPetProfile, profileFromPet, profilePatch, type PetProfileInput } from '../../data/auth';
 import { EMPTY_ROOM, PHOTO_LIBRARY } from '../../data/photos';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, type } from '../../theme';
@@ -23,14 +25,16 @@ type HomeNav = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const pet = useActivePet();
+  const pets = useAppStore((state) => state.pets);
   const overlay = useAppStore((state) => state.homeOverlay);
   const setHomeOverlay = useAppStore((state) => state.setHomeOverlay);
   const addPetPhoto = useAppStore((state) => state.addPetPhoto);
   const unread = useAppStore((state) => state.notifications.some((item) => !item.read));
   const [addMode, setAddMode] = useState(false);
+  const hasPet = pets.length > 0;
 
-  const scene = pet.heroPhoto ?? EMPTY_ROOM;
-  const hasPhoto = Boolean(pet.heroPhoto || pet.photo);
+  const scene = hasPet && pet.heroPhoto ? pet.heroPhoto : EMPTY_ROOM;
+  const hasPhoto = hasPet && Boolean(pet.heroPhoto || pet.photo);
 
   useEffect(() => {
     setAddMode(false);
@@ -47,7 +51,16 @@ export function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.avatarHit}>
-                <Pressable onPress={() => setAddMode((value) => !value)} style={styles.avatarWrap}>
+                <Pressable
+                  onPress={() => {
+                    if (!hasPet) {
+                      setHomeOverlay('pets');
+                      return;
+                    }
+                    setAddMode((value) => !value);
+                  }}
+                  style={styles.avatarWrap}
+                >
                   {pet.photo ? (
                     <Image
                       source={pet.photo}
@@ -77,7 +90,7 @@ export function HomeScreen() {
                 style={styles.petBtn}
                 onPress={() => setHomeOverlay('pets')}
               >
-                <Text style={styles.petName}>{pet.name}</Text>
+                <Text style={styles.petName}>{hasPet ? pet.name : 'Добавьте питомца'}</Text>
                 <Ionicons name="chevron-down" size={22} color={colors.ink} />
               </Pressable>
             </View>
@@ -120,10 +133,15 @@ export function HomeScreen() {
           ) : (
             <View style={styles.emptyWrap}>
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Добавьте фото питомца</Text>
-                <Text style={styles.emptyCopy}>Tailio создаст цифрового компаньона</Text>
+                <Text style={styles.emptyTitle}>{hasPet ? 'Добавьте фото питомца' : 'Добавьте питомца'}</Text>
+                <Text style={styles.emptyCopy}>
+                  {hasPet ? 'Tailio создаст цифрового компаньона' : 'После онбординга здесь появится ваш питомец'}
+                </Text>
               </View>
-              <Pressable style={styles.emptyPlus} onPress={() => setHomeOverlay('photos')}>
+              <Pressable
+                style={styles.emptyPlus}
+                onPress={() => setHomeOverlay(hasPet ? 'photos' : 'pets')}
+              >
                 <Ionicons name="add" size={32} color={colors.white} />
               </Pressable>
             </View>
@@ -147,24 +165,79 @@ function PetsSheet() {
   const setHomeOverlay = useAppStore((state) => state.setHomeOverlay);
   const setActivePet = useAppStore((state) => state.setActivePet);
   const addPet = useAppStore((state) => state.addPet);
+  const updatePet = useAppStore((state) => state.updatePet);
   const [draftId, setDraftId] = useState(pet.id);
+  const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const [form, setForm] = useState<PetProfileInput>(emptyPetProfile());
+  const formOpen = editingId !== undefined;
+
+  const closeForm = () => {
+    setEditingId(undefined);
+    setForm(emptyPetProfile());
+  };
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <Pressable style={styles.backdrop} onPress={() => setHomeOverlay(null)} />
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => {
+          if (formOpen) {
+            closeForm();
+            return;
+          }
+          setHomeOverlay(null);
+        }}
+      />
       <View style={styles.sheetStack}>
-        <Pressable style={styles.backBtn} onPress={() => setHomeOverlay(null)}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => {
+            if (formOpen) {
+              closeForm();
+              return;
+            }
+            setHomeOverlay(null);
+          }}
+        >
           <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <View style={styles.sheet}>
+        {formOpen ? (
+          <PetProfileForm
+            title={editingId ? 'Редактировать питомца' : 'Новый питомец'}
+            values={form}
+            submitLabel={editingId ? 'Сохранить' : 'Добавить'}
+            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+            onCancel={closeForm}
+            onSubmit={() => {
+              if (editingId) {
+                updatePet(editingId, profilePatch(form));
+                setDraftId(editingId);
+              } else {
+                setDraftId(addPet(form));
+              }
+              closeForm();
+            }}
+          />
+        ) : (
+          <>
         <View style={styles.sheetHead}>
           <Text style={styles.sheetTitle}>Ваши питомцы</Text>
-          <Pressable onPress={addPet} hitSlop={8}>
+          <Pressable
+            onPress={() => {
+              setEditingId(null);
+              setForm(emptyPetProfile());
+            }}
+            hitSlop={8}
+          >
             <Ionicons name="add" size={24} color={colors.ink} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.sheetList} showsVerticalScrollIndicator={false}>
-          {pets.map((item) => {
+        {pets.length === 0 ? (
+          <Text style={styles.emptyPets}>Пока нет питомцев. Добавьте первого плюсом сверху.</Text>
+        ) : null}
+        {pets.map((item) => {
             const selected = item.id === draftId;
             return (
               <Pressable
@@ -189,7 +262,15 @@ function PetsSheet() {
                     </View>
                   ) : null}
                 </View>
-                <Ionicons name="pencil-outline" size={18} color={colors.ink} />
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    setEditingId(item.id);
+                    setForm(profileFromPet(item));
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={colors.ink} />
+                </Pressable>
               </Pressable>
             );
           })}
@@ -198,12 +279,16 @@ function PetsSheet() {
           <Button
             label="Сохранить"
             onPress={() => {
-              setActivePet(draftId);
+              if (pets.some((item) => item.id === draftId)) {
+                setActivePet(draftId);
+              }
               setHomeOverlay(null);
             }}
             style={styles.saveBtn}
           />
         </View>
+          </>
+        )}
         </View>
       </View>
     </View>
@@ -514,6 +599,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 88,
     gap: 4,
+  },
+  emptyPets: {
+    ...type.body,
+    color: colors.muted,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
   },
   petRow: {
     flexDirection: 'row',

@@ -34,17 +34,21 @@ const TABS: { id: TabId; label: string }[] = [
 
 export function PetCardScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const pet = useAppStore((state) => state.pets.find((item) => item.id === route.params.petId) ?? state.pets[0]!);
+  const pet = useAppStore((state) => state.pets.find((item) => item.id === route.params.petId));
   const updatePet = useAppStore((state) => state.updatePet);
   const removePet = useAppStore((state) => state.removePet);
   const [tab, setTab] = useState<TabId>('photo');
   const [menu, setMenu] = useState(false);
   const [edit, setEdit] = useState(false);
   const [remove, setRemove] = useState(false);
+  const photos = useMemo(() => (pet ? uniquePhotos(pet) : []), [pet]);
+
+  if (!pet) {
+    return null;
+  }
 
   const kindLabel = pet.kind === 'cat' ? 'Кошка' : 'Собака';
   const sexLabel = pet.sex === 'Сука' || pet.sex === 'Кошка' ? 'Жен' : 'Муж';
-  const photos = useMemo(() => uniquePhotos(pet), [pet]);
   const hero = pet.heroPhoto ?? pet.photo;
 
   const showAvatar = tab !== 'photo' || !hero;

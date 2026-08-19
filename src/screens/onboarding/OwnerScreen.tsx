@@ -1,19 +1,21 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 
 type Props = {
-  onNext: (name: string) => void;
+  onNext: () => void;
   onSkip: () => void;
 };
 
 export function OwnerScreen({ onNext, onSkip }: Props) {
-  const [name, setName] = useState('');
+  const name = useAppStore((state) => state.onboarding.ownerName);
+  const city = useAppStore((state) => state.onboarding.ownerCity);
+  const patchOnboarding = useAppStore((state) => state.patchOnboarding);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -27,12 +29,19 @@ export function OwnerScreen({ onNext, onSkip }: Props) {
       <View style={styles.body}>
         <Text style={styles.title}>Как вас зовут?</Text>
         <Text style={styles.copy}>Давайте познакомимся, чтобы настроить Tailio для вас и вашего питомца</Text>
-        <TextField placeholder="Имя" value={name} onChangeText={setName} />
-        <TextField placeholder="Фамилия" />
-        <TextField placeholder="Отчество (необязательно)" />
+        <TextField
+          placeholder="Введите имя"
+          value={name}
+          onChangeText={(value) => patchOnboarding({ ownerName: value })}
+        />
+        <TextField
+          placeholder="Введите город проживания"
+          value={city}
+          onChangeText={(value) => patchOnboarding({ ownerCity: value })}
+        />
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" disabled={!name.trim()} onPress={() => onNext(name.trim())} />
+        <Button label="Далее" disabled={!name.trim()} onPress={onNext} />
         <Button label="Пропустить" variant="ghost" onPress={onSkip} />
       </View>
     </SafeAreaView>

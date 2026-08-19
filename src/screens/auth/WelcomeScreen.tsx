@@ -6,9 +6,10 @@ import { Button } from '../../components/ui/Button';
 
 type Props = {
   onStart: () => void;
+  onLogin: () => void;
 };
 
-export function WelcomeScreen({ onStart }: Props) {
+export function WelcomeScreen({ onStart, onLogin }: Props) {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
@@ -28,6 +29,7 @@ export function WelcomeScreen({ onStart }: Props) {
 
         <View style={styles.footer}>
           <Button label="Начать" onPress={onStart} style={styles.cta} />
+          <Button label="Уже есть аккаунт" variant="ghost" onPress={onLogin} />
         </View>
       </SafeAreaView>
     </View>
