@@ -1,6 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
@@ -13,6 +23,8 @@ type Props = {
   onBack: () => void;
 };
 
+const ACCESSORY_ID = 'otp-done';
+
 export function OtpScreen({ email, onNext, onBack }: Props) {
   const inputRef = useRef<TextInput>(null);
   const [code, setCode] = useState('');
@@ -20,7 +32,10 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
   const digits = code.replace(/\D/g, '').slice(0, 6);
   const ready = digits.length === 6;
 
+  const hideKeyboard = () => Keyboard.dismiss();
+
   const submit = () => {
+    hideKeyboard();
     if (digits !== DEMO_OTP) {
       setCode('');
       setError(true);
@@ -34,50 +49,69 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
-      <Pressable onPress={onBack} style={styles.back}>
-        <Text style={styles.backText}>←</Text>
-      </Pressable>
-      <View style={styles.body}>
-        <Text style={styles.title}>Подтвердите почту</Text>
-        <Text style={styles.copy}>
-          Отправили код вам на почту{email ? `\n${email}` : ''}
-        </Text>
-        <Text style={styles.hint}>Пока письма не уходят. Введите код {DEMO_OTP} вручную</Text>
-
-        <Pressable onPress={() => inputRef.current?.focus()} style={styles.row}>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.box,
-                digits[index] ? styles.boxFilled : null,
-                error ? styles.boxError : null,
-              ]}
-            >
-              <Text style={[styles.digit, error && styles.digitError]}>{digits[index] ?? ''}</Text>
-            </View>
-          ))}
-          <TextInput
-            ref={inputRef}
-            autoFocus
-            keyboardType="number-pad"
-            maxLength={6}
-            value={digits}
-            onChangeText={(value) => {
-              setCode(value.replace(/\D/g, '').slice(0, 6));
-              if (error) {
-                setError(false);
-              }
-            }}
-            style={styles.overlay}
-            caretHidden
-          />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable onPress={onBack} style={styles.back}>
+          <Text style={styles.backText}>←</Text>
         </Pressable>
-        {error ? <Text style={styles.error}>Неверный код. Введите код повторно</Text> : null}
-      </View>
-      <View style={styles.footer}>
-        <Button label="Далее" disabled={!ready} onPress={submit} />
-      </View>
+        <Pressable style={styles.body} onPress={hideKeyboard}>
+          <Text style={styles.title}>Подтвердите почту</Text>
+          <Text style={styles.copy}>
+            Отправили код вам на почту{email ? `\n${email}` : ''}
+          </Text>
+          <Text style={styles.hint}>Пока письма не уходят. Введите код {DEMO_OTP} вручную</Text>
+
+          <Pressable onPress={() => inputRef.current?.focus()} style={styles.row}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.box,
+                  digits[index] ? styles.boxFilled : null,
+                  error ? styles.boxError : null,
+                ]}
+              >
+                <Text style={[styles.digit, error && styles.digitError]}>{digits[index] ?? ''}</Text>
+              </View>
+            ))}
+            <TextInput
+              ref={inputRef}
+              autoFocus
+              keyboardType="number-pad"
+              inputAccessoryViewID={Platform.OS === 'ios' ? ACCESSORY_ID : undefined}
+              maxLength={6}
+              value={digits}
+              onChangeText={(value) => {
+                const next = value.replace(/\D/g, '').slice(0, 6);
+                setCode(next);
+                if (error) {
+                  setError(false);
+                }
+                if (next.length === 6) {
+                  hideKeyboard();
+                }
+              }}
+              style={styles.overlay}
+              caretHidden
+            />
+          </Pressable>
+          {error ? <Text style={styles.error}>Неверный код. Введите код повторно</Text> : null}
+        </Pressable>
+        <View style={styles.footer}>
+          <Button label="Далее" disabled={!ready} onPress={submit} />
+        </View>
+      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={ACCESSORY_ID}>
+          <View style={styles.accessory}>
+            <Pressable onPress={hideKeyboard} hitSlop={8}>
+              <Text style={styles.accessoryText}>Готово</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -86,6 +120,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.paper,
+  },
+  flex: {
+    flex: 1,
   },
   back: {
     height: 44,
@@ -153,5 +190,17 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
+  },
+  accessory: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F2F2F7',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  accessoryText: {
+    ...type.subtitle,
+    color: colors.purple,
   },
 });
