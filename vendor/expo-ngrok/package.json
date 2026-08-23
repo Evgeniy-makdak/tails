@@ -1,0 +1,7 @@
+{
+  "name": "@expo/ngrok",
+  "version": "4.2.1",
+  "private": true,
+  "description": "Cloudflare Tunnel for Expo Go, forced over HTTP/2 (TCP) so QUIC/UDP drops do not kill the session.",
+  "main": "index.js"
+}
