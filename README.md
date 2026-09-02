@@ -280,6 +280,21 @@ assets/                 иконки, фото питомцев, фон глав
 
 ---
 
+## Демо в браузере (GitHub Pages)
+
+После каждого push в ветку `main` приложение автоматически собирается и публикуется:
+
+**https://evgeniy-makdak.github.io/tails/**
+
+Для локальной проверки production-сборки:
+
+```bash
+npm run build:web
+npx serve dist
+```
+
+---
+
 ## Полезные команды
 
 ```bash
@@ -291,6 +306,7 @@ npm run tunnel              # тестировщик в другом город�
 npx expo start --ios        # симулятор iOS
 npx expo start --android    # эмулятор Android
 npm run lint                # проверка TypeScript без сборки
+npm run build:web           # production-сборка для GitHub Pages
 ```
 
 ---

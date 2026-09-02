@@ -10,7 +10,8 @@
     "android": "expo start --android",
     "tunnel": "node scripts/start-tunnel.js",
     "postinstall": "node scripts/patch-expo-https-tunnel.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "build:web": "expo export -p web"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

@@ -33,7 +33,11 @@
       "name": "Хвостик",
       "shortName": "Хвостик",
       "themeColor": "#E07A4A",
-      "backgroundColor": "#EFE6D9"
+      "backgroundColor": "#EFE6D9",
+      "output": "single"
+    },
+    "experiments": {
+      "baseUrl": "/tails"
     },
     "plugins": [
       "expo-font",
