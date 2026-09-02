@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { colors } from '../../theme';
 
@@ -9,17 +9,48 @@ type Props = {
 
 const PHONE_WIDTH = 390;
 const PHONE_HEIGHT = 844;
+const PAGE_PADDING = 16;
 
 export function PhoneShell({ children }: Props) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
   if (Platform.OS !== 'web') {
     return <>{children}</>;
   }
 
+  const scale = Math.min(
+    1,
+    (windowHeight - PAGE_PADDING * 2) / PHONE_HEIGHT,
+    (windowWidth - PAGE_PADDING * 2) / PHONE_WIDTH,
+  );
+
   return (
     <View style={styles.page}>
-      <View style={styles.device}>
-        <View style={styles.island} />
-        <View style={styles.screen}>{children}</View>
+      <View
+        style={[
+          styles.device,
+          {
+            width: PHONE_WIDTH * scale,
+            height: PHONE_HEIGHT * scale,
+            borderRadius: 44 * scale,
+            borderWidth: 10 * scale,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.deviceInner,
+            Platform.OS === 'web'
+              ? ({
+                  transform: [{ scale }],
+                  transformOrigin: 'top left',
+                } as object)
+              : { transform: [{ scale }] },
+          ]}
+        >
+          <View style={styles.island} />
+          <View style={styles.screen}>{children}</View>
+        </View>
       </View>
     </View>
   );
@@ -32,20 +63,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.linenDeep,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: PAGE_PADDING,
   },
   device: {
-    width: PHONE_WIDTH,
-    height: PHONE_HEIGHT,
-    borderRadius: 44,
     overflow: 'hidden',
     backgroundColor: colors.linen,
-    borderWidth: 10,
     borderColor: colors.ink,
     shadowColor: colors.ink,
     shadowOpacity: 0.22,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 18 },
+  },
+  deviceInner: {
+    width: PHONE_WIDTH,
+    height: PHONE_HEIGHT,
   },
   island: {
     position: 'absolute',
