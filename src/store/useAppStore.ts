@@ -22,6 +22,7 @@ import {
   type WalkEntry,
 } from '../data/auth';
 import type { HomeSegment, Pet, PetKind, PetSex, QuickActionKind } from '../types/pet';
+import { APP_STORAGE_KEY } from '../utils/resetAppData';
 
 export type { GeoZone, WalkEntry };
 
@@ -303,7 +304,7 @@ export const useAppStore = create<AppState>()(
       };
     },
     {
-      name: 'hvostik-app-v5',
+      name: APP_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         accounts: state.accounts,

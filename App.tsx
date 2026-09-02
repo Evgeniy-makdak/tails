@@ -20,6 +20,10 @@ import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { PhoneShell } from './src/components/ui/PhoneShell';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
+import { exposeResetHelperOnWeb, tryResetFromUrl } from './src/utils/resetAppData';
+
+tryResetFromUrl();
+exposeResetHelperOnWeb();
 
 if (Platform.OS === 'web') {
   enableScreens(false);
