@@ -282,9 +282,18 @@ assets/                 иконки, фото питомцев, фон глав
 
 ## Демо в браузере (GitHub Pages)
 
-После каждого push в ветку `main` приложение автоматически собирается и публикуется:
+После каждого push в ветку `main` приложение автоматически собирается и публикуется в ветку `gh-pages`.
 
 **https://evgeniy-makdak.github.io/tails/**
+
+### Первый запуск (один раз)
+
+1. Откройте [Settings → Pages](https://github.com/Evgeniy-makdak/tails/settings/pages).
+2. В **Build and deployment → Source** выберите **Deploy from a branch**.
+3. **Branch:** `gh-pages`, папка **/ (root)** → **Save**.
+4. Подождите 1–2 минуты — сайт станет доступен по ссылке выше.
+
+После этого каждый push в `main` будет автоматически обновлять демо.
 
 Для локальной проверки production-сборки:
 
