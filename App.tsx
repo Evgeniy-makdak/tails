@@ -60,7 +60,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.linenDeep,
+    backgroundColor: colors.bg,
   },
   boot: {
     flex: 1,

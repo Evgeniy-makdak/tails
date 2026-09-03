@@ -13,14 +13,48 @@ if (!fs.existsSync(indexPath)) {
 
 let html = fs.readFileSync(indexPath, 'utf8');
 
-if (html.includes('type="module"')) {
-  process.exit(0);
+// Expo SPA bundle needs ES module mode (zustand uses import.meta)
+if (!html.includes('type="module"')) {
+  html = html.replace(
+    /<script src="([^"]+)" defer><\/script>/,
+    '<script type="module" src="$1" defer></script>',
+  );
 }
 
-html = html.replace(
-  /<script src="([^"]+)" defer><\/script>/,
-  '<script type="module" src="$1" defer></script>',
-);
+const pwaHead = `
+    <link rel="manifest" href="/tails/manifest.json" />
+    <meta name="theme-color" content="#8B7FFF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Хвостик" />
+    <link rel="apple-touch-icon" href="/tails/apple-touch-icon.png" />
+`;
+
+if (!html.includes('rel="manifest"')) {
+  html = html.replace('</head>', `${pwaHead}</head>`);
+}
+
+if (!html.includes('viewport-fit=cover')) {
+  html = html.replace(
+    /content="width=device-width, initial-scale=1, shrink-to-fit=no"/,
+    'content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no"',
+  );
+}
+
+const swScript = `
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/tails/sw.js', { scope: '/tails/' }).catch(function () {});
+      });
+    }
+  </script>
+`;
+
+if (!html.includes('serviceWorker.register')) {
+  html = html.replace('</body>', `${swScript}</body>`);
+}
 
 fs.writeFileSync(indexPath, html);
-console.log('patch-web-index: added type="module" to dist/index.html');
+console.log('patch-web-index: module + PWA meta/SW applied to dist/index.html');

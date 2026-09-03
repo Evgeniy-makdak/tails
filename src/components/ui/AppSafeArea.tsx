@@ -6,18 +6,22 @@ import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
 
-const WEB_INSETS = { top: 44, left: 0, right: 0, bottom: 24 };
-const WEB_FRAME = { x: 0, y: 0, width: 390, height: 844 };
+import { useWebPhonePreview } from '../../utils/useWebPhonePreview';
+
+const PHONE_INSETS = { top: 44, left: 0, right: 0, bottom: 24 };
+const PHONE_FRAME = { x: 0, y: 0, width: 390, height: 844 };
 
 type Props = {
   children: ReactNode;
 };
 
 export function AppSafeArea({ children }: Props) {
-  if (Platform.OS === 'web') {
+  const phonePreview = useWebPhonePreview();
+
+  if (Platform.OS === 'web' && phonePreview) {
     return (
-      <SafeAreaFrameContext.Provider value={WEB_FRAME}>
-        <SafeAreaInsetsContext.Provider value={WEB_INSETS}>{children}</SafeAreaInsetsContext.Provider>
+      <SafeAreaFrameContext.Provider value={PHONE_FRAME}>
+        <SafeAreaInsetsContext.Provider value={PHONE_INSETS}>{children}</SafeAreaInsetsContext.Provider>
       </SafeAreaFrameContext.Provider>
     );
   }

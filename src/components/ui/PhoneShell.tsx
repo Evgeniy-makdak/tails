@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { colors } from '../../theme';
+import { useWebPhonePreview } from '../../utils/useWebPhonePreview';
 
 type Props = {
   children: ReactNode;
@@ -12,10 +13,11 @@ const PHONE_HEIGHT = 844;
 const PAGE_PADDING = 16;
 
 export function PhoneShell({ children }: Props) {
+  const showPreview = useWebPhonePreview();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  if (Platform.OS !== 'web') {
-    return <>{children}</>;
+  if (Platform.OS !== 'web' || !showPreview) {
+    return <View style={styles.fullscreen}>{children}</View>;
   }
 
   const scale = Math.min(
@@ -57,6 +59,11 @@ export function PhoneShell({ children }: Props) {
 }
 
 const styles = StyleSheet.create({
+  fullscreen: {
+    flex: 1,
+    minHeight: '100%' as unknown as number,
+    backgroundColor: colors.bg,
+  },
   page: {
     flex: 1,
     minHeight: '100%' as unknown as number,

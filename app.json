@@ -32,9 +32,11 @@
       "bundler": "metro",
       "name": "Хвостик",
       "shortName": "Хвостик",
-      "themeColor": "#E07A4A",
-      "backgroundColor": "#EFE6D9",
-      "output": "single"
+      "themeColor": "#8B7FFF",
+      "backgroundColor": "#FFFFFF",
+      "output": "single",
+      "display": "standalone",
+      "lang": "ru"
     },
     "experiments": {
       "baseUrl": "/tails"
