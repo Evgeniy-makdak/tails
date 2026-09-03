@@ -1,16 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  LayoutChangeEvent,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PetAvatar } from '../../components/pet/PetAvatar';
@@ -24,102 +16,38 @@ type TabId = 'location' | 'timeline';
 type RangeId = '1h' | '3h' | '6h' | '12h' | '24h';
 
 const RANGES: RangeId[] = ['1h', '3h', '6h', '12h', '24h'];
-const RANGE_PROGRESS: Record<RangeId, number> = {
-  '1h': 0.12,
-  '3h': 0.28,
-  '6h': 0.48,
-  '12h': 0.7,
-  '24h': 1,
-};
 
-function progressToRange(progress: number): RangeId {
-  let best: RangeId = '1h';
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const id of RANGES) {
-    const distance = Math.abs(RANGE_PROGRESS[id] - progress);
-    if (distance < bestDistance) {
-      best = id;
-      bestDistance = distance;
-    }
-  }
-  return best;
+function rangeToProgress(range: RangeId): number {
+  const index = RANGES.indexOf(range);
+  return index <= 0 ? 0 : index / (RANGES.length - 1);
 }
 
-function RangeSlider({
-  progress,
-  onChange,
-  onChangeEnd,
-}: {
-  progress: number;
-  onChange: (next: number) => void;
-  onChangeEnd: (next: number) => void;
-}) {
-  const trackRef = useRef<View>(null);
-  const widthRef = useRef(0);
-  const leftRef = useRef(0);
-  const progressRef = useRef(progress);
-
-  useEffect(() => {
-    progressRef.current = progress;
-  }, [progress]);
-
-  const measureTrack = () => {
-    trackRef.current?.measureInWindow((x, _y, width) => {
-      leftRef.current = x;
-      widthRef.current = width;
-    });
-  };
-
-  const updateFromPageX = (pageX: number) => {
-    const width = widthRef.current;
-    if (width <= 0) {
-      return;
-    }
-    const next = Math.max(0, Math.min(1, (pageX - leftRef.current) / width));
-    progressRef.current = next;
-    onChange(next);
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: (event) => {
-        measureTrack();
-        updateFromPageX(event.nativeEvent.pageX);
-      },
-      onPanResponderMove: (event) => {
-        updateFromPageX(event.nativeEvent.pageX);
-      },
-      onPanResponderRelease: () => {
-        onChangeEnd(progressRef.current);
-      },
-      onPanResponderTerminate: () => {
-        onChangeEnd(progressRef.current);
-      },
-    }),
-  ).current;
-
-  const onLayout = (event: LayoutChangeEvent) => {
-    widthRef.current = event.nativeEvent.layout.width;
-    measureTrack();
-  };
-
+function progressToRange(progress: number): RangeId {
   const clamped = Math.max(0, Math.min(1, progress));
+  const index = Math.round(clamped * (RANGES.length - 1));
+  return RANGES[index] ?? '24h';
+}
+
+/** Same responder pattern as SensitivitySlider — reliable on web/PWA touch. */
+function RangeSlider({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const [width, setWidth] = useState(1);
+  const clamp = (x: number) => Math.max(0, Math.min(1, x / Math.max(width, 1)));
 
   return (
     <View
-      ref={trackRef}
       style={styles.sliderHit}
-      onLayout={onLayout}
-      {...panResponder.panHandlers}
+      onLayout={(event) => setWidth(Math.max(1, event.nativeEvent.layout.width))}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderTerminationRequest={() => false}
+      onResponderGrant={(event) => onChange(clamp(event.nativeEvent.locationX))}
+      onResponderMove={(event) => onChange(clamp(event.nativeEvent.locationX))}
       accessibilityRole="adjustable"
       accessibilityLabel="Диапазон истории"
     >
       <View style={styles.sliderTrack}>
-        <View style={[styles.sliderFill, { width: `${clamped * 100}%` }]} />
-        <View style={[styles.sliderKnob, { left: `${clamped * 100}%` }]} />
+        <View style={[styles.sliderFill, { width: `${value * 100}%` }]} />
+        <View style={[styles.sliderKnob, { left: `${value * 100}%` }]} />
       </View>
     </View>
   );
@@ -149,7 +77,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const addWalk = useAppStore((state) => state.addWalk);
   const [tab, setTab] = useState<TabId>('location');
   const [range, setRange] = useState<RangeId>('24h');
-  const [sliderProgress, setSliderProgress] = useState(RANGE_PROGRESS['24h']);
+  const [sliderProgress, setSliderProgress] = useState(rangeToProgress('24h'));
   const [selectedWalk, setSelectedWalk] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(0);
 
@@ -169,13 +97,12 @@ export function WalkHistoryScreen({ navigation }: Props) {
 
   const selectRange = (next: RangeId) => {
     setRange(next);
-    setSliderProgress(RANGE_PROGRESS[next]);
+    setSliderProgress(rangeToProgress(next));
   };
 
-  const finishSlider = (next: number) => {
-    const snapped = progressToRange(next);
-    setRange(snapped);
-    setSliderProgress(RANGE_PROGRESS[snapped]);
+  const onSliderChange = (next: number) => {
+    setSliderProgress(next);
+    setRange(progressToRange(next));
   };
 
   return (
@@ -201,7 +128,12 @@ export function WalkHistoryScreen({ navigation }: Props) {
       </View>
 
       {tab === 'location' ? (
-        <View style={styles.locationPane}>
+        <ScrollView
+          style={styles.locationPane}
+          contentContainerStyle={styles.locationContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <View style={styles.mapCard}>
             <View style={styles.heatA} />
             <View style={styles.heatB} />
@@ -235,7 +167,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
               </Pressable>
               <View style={{ alignItems: 'center' }}>
                 <Text style={styles.dateTitle}>{dateLabel}</Text>
-                <Text style={styles.dateMeta}>08:51 — 23:21</Text>
+                <Text style={styles.dateMeta}>08:51 — 23:21 · {range}</Text>
               </View>
               <Pressable
                 onPress={() => setDayOffset((value) => Math.max(0, value - 1))}
@@ -246,11 +178,11 @@ export function WalkHistoryScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <RangeSlider progress={sliderProgress} onChange={setSliderProgress} onChangeEnd={finishSlider} />
+            <RangeSlider value={sliderProgress} onChange={onSliderChange} />
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rangeRow}>
+            <View style={styles.rangeRow}>
               <Pressable style={styles.calBtn}>
-                <Ionicons name="calendar-outline" size={16} color={colors.ink} />
+                <Ionicons name="calendar-outline" size={18} color={colors.ink} />
               </Pressable>
               {RANGES.map((item) => (
                 <Pressable
@@ -261,7 +193,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                   <Text style={[styles.rangeText, range === item && styles.rangeTextOn]}>{item}</Text>
                 </Pressable>
               ))}
-            </ScrollView>
+            </View>
 
             <Text style={styles.listTitle}>Прогулки</Text>
             {displayWalks.map((item) => {
@@ -286,7 +218,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
               );
             })}
           </View>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.timeline} showsVerticalScrollIndicator={false}>
           {TIMELINE.map((section) => (
@@ -383,8 +315,11 @@ const styles = StyleSheet.create({
   locationPane: {
     flex: 1,
   },
+  locationContent: {
+    paddingBottom: 28,
+  },
   mapCard: {
-    height: 260,
+    height: 240,
     marginHorizontal: spacing.xl,
     borderRadius: 24,
     overflow: 'hidden',
@@ -461,10 +396,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   controls: {
-    flex: 1,
     paddingHorizontal: spacing.xl,
     paddingTop: 14,
-    gap: 12,
+    gap: 14,
   },
   dateRow: {
     flexDirection: 'row',
@@ -489,59 +423,65 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sliderHit: {
-    height: 36,
+    height: 44,
     justifyContent: 'center',
   },
   sliderTrack: {
-    height: 10,
-    borderRadius: 5,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: colors.bg,
     position: 'relative',
   },
   sliderFill: {
-    height: 10,
-    borderRadius: 5,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: colors.purple,
   },
   sliderKnob: {
     position: 'absolute',
-    top: -6,
-    width: 22,
-    height: 22,
-    marginLeft: -11,
-    borderRadius: 11,
+    top: -8,
+    width: 28,
+    height: 28,
+    marginLeft: -14,
+    borderRadius: 14,
     backgroundColor: colors.paper,
     borderWidth: 3,
     borderColor: colors.purple,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   rangeRow: {
-    gap: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   calBtn: {
-    width: 40,
-    height: 36,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rangeBtn: {
-    minWidth: 48,
-    height: 36,
-    borderRadius: 12,
+    flex: 1,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
   },
   rangeBtnOn: {
     backgroundColor: colors.purple,
   },
   rangeText: {
-    ...type.caption,
-    color: colors.ink,
+    fontSize: 15,
+    lineHeight: 20,
     fontFamily: 'Inter_600SemiBold',
+    color: colors.ink,
   },
   rangeTextOn: {
     color: colors.white,
