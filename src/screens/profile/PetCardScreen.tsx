@@ -19,7 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { PHOTO_LIBRARY } from '../../data/photos';
 import { useAppStore } from '../../store/useAppStore';
-import { colors, type } from '../../theme';
+import { colors, radius, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 import type { Pet } from '../../types/pet';
 
@@ -221,20 +221,74 @@ function PhotoTab({
 }
 
 function CompanionTab({ pet }: { pet: Pet }) {
+  const updatePet = useAppStore((state) => state.updatePet);
   const cover = pet.heroPhoto ?? pet.photo;
+  const [sheet, setSheet] = useState<'create' | 'style' | 'save' | null>(null);
+  const [styleId, setStyleId] = useState<'classic' | 'warm' | 'cool'>('classic');
+  const [toast, setToast] = useState('');
+
+  const applyStyle = (id: typeof styleId) => {
+    setStyleId(id);
+    const photo = PHOTO_LIBRARY[id === 'classic' ? 0 : id === 'warm' ? 1 : 2] ?? cover;
+    if (photo != null) {
+      updatePet(pet.id, { heroPhoto: photo, photo });
+    }
+    setSheet(null);
+    setToast('Стиль компаньона обновлён');
+    setTimeout(() => setToast(''), 2000);
+  };
+
+  const savePhoto = () => {
+    setSheet(null);
+    setToast('Фото сохранено (демо)');
+    setTimeout(() => setToast(''), 2000);
+  };
+
   return (
     <View style={{ gap: 18 }}>
       <View style={styles.companionCard}>
         {cover ? <CoverImage source={cover} style={styles.companionImg} position="center 30%" /> : <View style={styles.companionImg} />}
         <View style={styles.badge}>
           <Ionicons name="star" size={12} color={colors.white} />
-          <Text style={styles.badgeText}>Основной</Text>
+          <Text style={styles.badgeText}>Основной · {styleId === 'classic' ? 'Классика' : styleId === 'warm' ? 'Тёплый' : 'Холодный'}</Text>
         </View>
       </View>
       <Text style={styles.blockTitle}>Функции</Text>
-      <ActionRow icon="add-circle-outline" label="Создать нового" />
-      <ActionRow icon="color-palette-outline" label="Изменить стиль" />
-      <ActionRow icon="download-outline" label="Сохранить фото" />
+      <ActionRow icon="add-circle-outline" label="Создать нового" onPress={() => setSheet('create')} />
+      <ActionRow icon="color-palette-outline" label="Изменить стиль" onPress={() => setSheet('style')} />
+      <ActionRow icon="download-outline" label="Сохранить фото" onPress={() => setSheet('save')} />
+
+      {toast ? (
+        <View style={styles.companionToast}>
+          <Text style={styles.companionToastText}>{toast}</Text>
+        </View>
+      ) : null}
+
+      <InAppSheet visible={sheet === 'create'} onClose={() => setSheet(null)}>
+        <Text style={styles.sheetTitle}>Новый компаньон</Text>
+        <Text style={styles.sheetCopy}>
+          Демо: ИИ создаст альтернативный аватар для {pet.name}. Выберите настроение — стиль применится к карточке.
+        </Text>
+        <Button label="Сгенерировать (демо)" onPress={() => applyStyle('warm')} />
+        <Button label="Отмена" variant="ghost" onPress={() => setSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={sheet === 'style'} onClose={() => setSheet(null)}>
+        <Text style={styles.sheetTitle}>Изменить стиль</Text>
+        <Text style={styles.sheetCopy}>Выберите пресет оформления компаньона.</Text>
+        <Button label="Классика" variant={styleId === 'classic' ? 'primary' : 'soft'} onPress={() => applyStyle('classic')} />
+        <Button label="Тёплый свет" variant={styleId === 'warm' ? 'primary' : 'soft'} onPress={() => applyStyle('warm')} />
+        <Button label="Холодный свет" variant={styleId === 'cool' ? 'primary' : 'soft'} onPress={() => applyStyle('cool')} />
+      </InAppSheet>
+
+      <InAppSheet visible={sheet === 'save'} onClose={() => setSheet(null)}>
+        <Text style={styles.sheetTitle}>Сохранить фото</Text>
+        <Text style={styles.sheetCopy}>
+          Текущее фото {pet.name} будет сохранено в галерею устройства. В веб-демо это имитация.
+        </Text>
+        <Button label="Сохранить" onPress={savePhoto} />
+        <Button label="Отмена" variant="ghost" onPress={() => setSheet(null)} />
+      </InAppSheet>
     </View>
   );
 }
@@ -333,13 +387,21 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionRow({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function ActionRow({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress?: () => void;
+}) {
   return (
-    <View style={styles.actionRow}>
+    <Pressable style={styles.actionRow} onPress={onPress}>
       <Ionicons name={icon} size={20} color={colors.purple} />
       <Text style={styles.actionLabel}>{label}</Text>
       <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -690,6 +752,17 @@ const styles = StyleSheet.create({
   badgeText: {
     ...type.caption,
     color: colors.white,
+  },
+  companionToast: {
+    backgroundColor: colors.greenSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  companionToastText: {
+    ...type.caption,
+    color: colors.green,
+    fontFamily: 'Inter_600SemiBold',
   },
   blockTitle: {
     ...type.subtitle,
