@@ -61,12 +61,16 @@ export function PhoneShell({ children }: Props) {
 const styles = StyleSheet.create({
   fullscreen: {
     flex: 1,
-    minHeight: '100%' as unknown as number,
+    height: '100%' as unknown as number,
+    maxHeight: '100%' as unknown as number,
+    overflow: 'hidden',
     backgroundColor: colors.bg,
   },
   page: {
     flex: 1,
-    minHeight: '100%' as unknown as number,
+    height: '100%' as unknown as number,
+    maxHeight: '100%' as unknown as number,
+    overflow: 'hidden',
     backgroundColor: colors.linenDeep,
     alignItems: 'center',
     justifyContent: 'center',

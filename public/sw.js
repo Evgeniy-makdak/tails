@@ -1,5 +1,5 @@
 /* Hvostik PWA service worker — scoped to /tails/ */
-const CACHE = 'hvostik-shell-v1';
+const CACHE = 'hvostik-shell-v2';
 const BASE = '/tails/';
 const PRECACHE = [
   BASE,
