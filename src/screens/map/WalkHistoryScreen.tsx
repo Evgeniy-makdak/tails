@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PetAvatar } from '../../components/pet/PetAvatar';
@@ -16,6 +24,106 @@ type TabId = 'location' | 'timeline';
 type RangeId = '1h' | '3h' | '6h' | '12h' | '24h';
 
 const RANGES: RangeId[] = ['1h', '3h', '6h', '12h', '24h'];
+const RANGE_PROGRESS: Record<RangeId, number> = {
+  '1h': 0.12,
+  '3h': 0.28,
+  '6h': 0.48,
+  '12h': 0.7,
+  '24h': 1,
+};
+
+function progressToRange(progress: number): RangeId {
+  let best: RangeId = '1h';
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const id of RANGES) {
+    const distance = Math.abs(RANGE_PROGRESS[id] - progress);
+    if (distance < bestDistance) {
+      best = id;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function RangeSlider({
+  progress,
+  onChange,
+  onChangeEnd,
+}: {
+  progress: number;
+  onChange: (next: number) => void;
+  onChangeEnd: (next: number) => void;
+}) {
+  const trackRef = useRef<View>(null);
+  const widthRef = useRef(0);
+  const leftRef = useRef(0);
+  const progressRef = useRef(progress);
+
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
+
+  const measureTrack = () => {
+    trackRef.current?.measureInWindow((x, _y, width) => {
+      leftRef.current = x;
+      widthRef.current = width;
+    });
+  };
+
+  const updateFromPageX = (pageX: number) => {
+    const width = widthRef.current;
+    if (width <= 0) {
+      return;
+    }
+    const next = Math.max(0, Math.min(1, (pageX - leftRef.current) / width));
+    progressRef.current = next;
+    onChange(next);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event) => {
+        measureTrack();
+        updateFromPageX(event.nativeEvent.pageX);
+      },
+      onPanResponderMove: (event) => {
+        updateFromPageX(event.nativeEvent.pageX);
+      },
+      onPanResponderRelease: () => {
+        onChangeEnd(progressRef.current);
+      },
+      onPanResponderTerminate: () => {
+        onChangeEnd(progressRef.current);
+      },
+    }),
+  ).current;
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    widthRef.current = event.nativeEvent.layout.width;
+    measureTrack();
+  };
+
+  const clamped = Math.max(0, Math.min(1, progress));
+
+  return (
+    <View
+      ref={trackRef}
+      style={styles.sliderHit}
+      onLayout={onLayout}
+      {...panResponder.panHandlers}
+      accessibilityRole="adjustable"
+      accessibilityLabel="Диапазон истории"
+    >
+      <View style={styles.sliderTrack}>
+        <View style={[styles.sliderFill, { width: `${clamped * 100}%` }]} />
+        <View style={[styles.sliderKnob, { left: `${clamped * 100}%` }]} />
+      </View>
+    </View>
+  );
+}
 
 const TIMELINE = [
   {
@@ -41,6 +149,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const addWalk = useAppStore((state) => state.addWalk);
   const [tab, setTab] = useState<TabId>('location');
   const [range, setRange] = useState<RangeId>('24h');
+  const [sliderProgress, setSliderProgress] = useState(RANGE_PROGRESS['24h']);
   const [selectedWalk, setSelectedWalk] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(0);
 
@@ -57,6 +166,17 @@ export function WalkHistoryScreen({ navigation }: Props) {
 
   const activeWalk = displayWalks.find((item) => item.id === selectedWalk) ?? displayWalks[0];
   const dateLabel = dayOffset === 0 ? 'Сегодня' : dayOffset === 1 ? 'Вчера' : `${dayOffset} дн. назад`;
+
+  const selectRange = (next: RangeId) => {
+    setRange(next);
+    setSliderProgress(RANGE_PROGRESS[next]);
+  };
+
+  const finishSlider = (next: number) => {
+    const snapped = progressToRange(next);
+    setRange(snapped);
+    setSliderProgress(RANGE_PROGRESS[snapped]);
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -126,10 +246,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <View style={styles.sliderTrack}>
-              <View style={[styles.sliderFill, { width: range === '24h' ? '100%' : range === '12h' ? '70%' : '45%' }]} />
-              <View style={[styles.sliderKnob, { left: range === '24h' ? '92%' : range === '12h' ? '64%' : '40%' }]} />
-            </View>
+            <RangeSlider progress={sliderProgress} onChange={setSliderProgress} onChangeEnd={finishSlider} />
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rangeRow}>
               <Pressable style={styles.calBtn}>
@@ -139,7 +256,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                 <Pressable
                   key={item}
                   style={[styles.rangeBtn, range === item && styles.rangeBtnOn]}
-                  onPress={() => setRange(item)}
+                  onPress={() => selectRange(item)}
                 >
                   <Text style={[styles.rangeText, range === item && styles.rangeTextOn]}>{item}</Text>
                 </Pressable>
@@ -371,6 +488,10 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 2,
   },
+  sliderHit: {
+    height: 36,
+    justifyContent: 'center',
+  },
   sliderTrack: {
     height: 10,
     borderRadius: 5,
@@ -384,11 +505,11 @@ const styles = StyleSheet.create({
   },
   sliderKnob: {
     position: 'absolute',
-    top: -5,
-    width: 20,
-    height: 20,
-    marginLeft: -10,
-    borderRadius: 10,
+    top: -6,
+    width: 22,
+    height: 22,
+    marginLeft: -11,
+    borderRadius: 11,
     backgroundColor: colors.paper,
     borderWidth: 3,
     borderColor: colors.purple,
