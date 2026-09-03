@@ -95,6 +95,9 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
               }}
               style={styles.overlay}
               caretHidden
+              selectionColor="transparent"
+              underlineColorAndroid="transparent"
+              importantForAccessibility="no"
             />
           </Pressable>
           {error ? <Text style={styles.error}>Неверный код. Введите код повторно</Text> : null}
@@ -184,8 +187,18 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.02,
-    color: colors.ink,
+    opacity: 0.01,
+    color: 'transparent',
+    // Hide browser focus ring around the invisible OTP field on web / PWA
+    ...(Platform.OS === 'web'
+      ? ({
+          outlineStyle: 'none',
+          outlineWidth: 0,
+          outlineColor: 'transparent',
+          boxShadow: 'none',
+          caretColor: 'transparent',
+        } as object)
+      : null),
   },
   footer: {
     paddingHorizontal: spacing.xl,

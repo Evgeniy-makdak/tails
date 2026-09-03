@@ -62,6 +62,12 @@ const viewportCss = `
         display: flex;
         flex-direction: column;
       }
+      /* Invisible OTP / form fields: kill Safari/Chrome focus ring */
+      input:focus, textarea:focus, [contenteditable]:focus {
+        outline: none !important;
+        box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+      }
     </style>
 `;
 
