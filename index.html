@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, shrink-to-fit=no" />
+    <title>Хвостик</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  <meta name="theme-color" content="#8B7FFF">
+<link rel="icon" href="/tails/favicon.ico" />
+    <link rel="manifest" href="/tails/manifest.json" />
+    <meta name="theme-color" content="#8B7FFF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Хвостик" />
+    <link rel="apple-touch-icon" href="/tails/apple-touch-icon.png" />
+
+    <style id="hvostik-viewport">
+      html, body, #root {
+        height: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        width: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+      }
+      #root {
+        display: flex;
+        flex-direction: column;
+      }
+      /* Invisible OTP / form fields: kill Safari/Chrome focus ring */
+      input:focus, textarea:focus, [contenteditable]:focus {
+        outline: none !important;
+        box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+      }
+    </style>
+</head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script type="module" src="/tails/_expo/static/js/web/AppEntry-e3222c5c75652c4cbc77c2db9d24d163.js" defer></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/tails/sw.js', { scope: '/tails/' }).catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
