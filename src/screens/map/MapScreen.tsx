@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PetAvatar } from '../../components/pet/PetAvatar';
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
+import { useCollarLocation } from '../../location';
+import { MapCanvas } from '../../map';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
@@ -27,6 +29,10 @@ export function MapScreen() {
   const navigation = useNavigation<MapNav>();
   const pet = useActivePet();
   const updatePet = useAppStore((state) => state.updatePet);
+  const { coordsLabel } = useCollarLocation({
+    petId: pet.id,
+    collarId: pet.collarId,
+  });
   const [expanded, setExpanded] = useState(true);
   const [sosPhase, setSosPhase] = useState<SosPhase>('off');
   const [soundOn, setSoundOn] = useState(false);
@@ -101,13 +107,13 @@ export function MapScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View style={[styles.map, { transform: [{ scale: zoom }] }]}>
+      <MapCanvas previewScale={zoom} style={styles.map}>
         <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
           <View style={styles.live}>
             <View style={[styles.liveDot, sosActive && styles.liveDotSos]} />
             <Text style={styles.liveText}>Live · {pet.battery || 67}%</Text>
           </View>
-          <Text style={styles.coords}>59.9362, 30.3141</Text>
+          <Text style={styles.coords}>{coordsLabel ?? '59.9362, 30.3141'}</Text>
         </SafeAreaView>
 
         {toast ? (
@@ -144,7 +150,7 @@ export function MapScreen() {
           />
           <PetAvatar pet={pet} size={52} />
         </View>
-      </View>
+      </MapCanvas>
 
       <View style={styles.zoom} pointerEvents="box-none">
         <Pressable style={styles.zoomBtn} onPress={() => setZoom((z) => Math.min(1.35, Number((z + 0.1).toFixed(2))))}>
