@@ -1,76 +1,331 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TailioBlob } from '../../components/brand/TailioMark';
 import { useActivePet } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
+import { pickChatCamera, pickChatDocument, pickChatGallery, type ChatAttachment } from '../../utils/chatAttachments';
+import { startVoiceCapture } from '../../utils/voiceInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Chat'>;
 
-export function ChatScreen({ navigation }: Props) {
+type ChatRole = 'bot' | 'user';
+
+type ChatMessage = {
+  id: string;
+  role: ChatRole;
+  text: string;
+  attachment?: ChatAttachment;
+};
+
+const OPERATOR_REPLIES = [
+  'Мы получили ваш вопрос и уже ищем оператора для ответа…',
+  'Мы ценим ваше время! Если вы отправите подробное описание вашего вопроса, то мы ответим вам сразу после того как появится свободный оператор.',
+  'Специалист уже в очереди. Пока можете приложить фото или документы — так ответ будет точнее.',
+  'Оператор скоро подключится. Если ситуация срочная — откройте карту и активируйте SOS, чтобы связаться со службой помощи.',
+  'Спасибо за обращение! Ветеринарный специалист ответит, как только освободится. Мы сохранили ваш запрос в чате.',
+];
+
+function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function ChatScreen({ navigation, route }: Props) {
   const pet = useActivePet();
-  const [menu, setMenu] = useState(false);
+  const mode = route.params?.mode ?? 'tailio';
+  const isHelp = mode === 'help';
+
+  const welcome = useMemo<ChatMessage[]>(
+    () => [
+      {
+        id: 'welcome',
+        role: 'bot',
+        text: isHelp
+          ? `Вы на связи со службой помощи Tailio. Расскажите, что случилось с ${pet.name} — специалист подключится к диалогу.`
+          : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.\n\nЯ уже проверил его состояние 👀 Сейчас он спокоен, а показатели в пределах нормы.`,
+      },
+    ],
+    [isHelp, pet.name],
+  );
+
+  const [messages, setMessages] = useState<ChatMessage[]>(welcome);
+  const [draft, setDraft] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [userQuestionCount, setUserQuestionCount] = useState(0);
+
+  const feedRef = useRef<ScrollView>(null);
+  const replyTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const voiceStopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    setMessages(welcome);
+    setUserQuestionCount(0);
+  }, [welcome]);
+
+  useEffect(() => {
+    return () => {
+      replyTimers.current.forEach(clearTimeout);
+      voiceStopRef.current?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => feedRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(t);
+  }, [messages, typing]);
+
+  const scheduleOperatorReply = (nextCount: number) => {
+    setTyping(true);
+    const delay = 2000 + Math.floor(Math.random() * 1000);
+    const timer = setTimeout(() => {
+      const reply =
+        OPERATOR_REPLIES[(nextCount - 1) % OPERATOR_REPLIES.length] ??
+        'Мы получили ваш вопрос и уже ищем оператора для ответа…';
+      setMessages((prev) => [...prev, { id: uid(), role: 'bot', text: reply }]);
+      setTyping(false);
+    }, delay);
+    replyTimers.current.push(timer);
+  };
+
+  const sendText = (raw: string, attachment?: ChatAttachment) => {
+    const text = raw.trim();
+    if (!text && !attachment) {
+      return;
+    }
+
+    setMenuOpen(false);
+    setDraft('');
+    const nextCount = userQuestionCount + 1;
+    setUserQuestionCount(nextCount);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        role: 'user',
+        text: text || (attachment?.kind === 'image' ? 'Фото во вложении' : 'Файл во вложении'),
+        attachment,
+      },
+    ]);
+    scheduleOperatorReply(nextCount);
+  };
+
+  const onSend = () => sendText(draft);
+
+  const onChip = (label: string) => {
+    if (typing || listening) {
+      return;
+    }
+    sendText(label);
+  };
+
+  const onAttach = async (kind: 'camera' | 'gallery' | 'file') => {
+    setMenuOpen(false);
+    const attachment =
+      kind === 'camera' ? await pickChatCamera() : kind === 'gallery' ? await pickChatGallery() : await pickChatDocument();
+    if (!attachment) {
+      return;
+    }
+    sendText(attachment.kind === 'image' ? 'Прикрепил(а) изображение' : `Прикрепил(а) файл: ${attachment.name}`, attachment);
+  };
+
+  const onMic = async () => {
+    if (typing) {
+      return;
+    }
+    if (listening) {
+      voiceStopRef.current?.();
+      voiceStopRef.current = null;
+      setListening(false);
+      return;
+    }
+
+    setMenuOpen(false);
+    setListening(true);
+    const session = startVoiceCapture({
+      onPartial: (text) => setDraft(text),
+    });
+    voiceStopRef.current = session.stop;
+    const result = await session.promise;
+    voiceStopRef.current = null;
+    setListening(false);
+    if (result?.transcript) {
+      setDraft(result.transcript);
+    }
+  };
+
+  const canSend = draft.trim().length > 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
-        </Pressable>
-        <Text style={styles.title}>Tailo-Чат</Text>
-        <View style={{ width: 24 }} />
-      </View>
-      <ScrollView contentContainerStyle={styles.feed}>
-        <Text style={styles.day}>Сегодня</Text>
-        <View style={styles.msg}>
-          <TailioBlob size={36} />
-          <View style={styles.bubble}>
-            <Text style={styles.sender}>Tailio</Text>
-            <Text style={styles.text}>
-              Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью {pet.name}.
-            </Text>
-            <Text style={styles.text}>
-              Я уже проверил его состояние 👀 Сейчас он <Text style={styles.ok}>спокоен</Text>, а показатели в пределах{' '}
-              <Text style={styles.ok}>нормы</Text>.
-            </Text>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={8}
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+          </Pressable>
+          <Text style={styles.title}>{isHelp ? 'Служба помощи' : 'Tailio Чат'}</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        <ScrollView ref={feedRef} contentContainerStyle={styles.feed} keyboardShouldPersistTaps="handled">
+          <Text style={styles.day}>Сегодня</Text>
+          {messages.map((message) =>
+            message.role === 'bot' ? (
+              <View key={message.id} style={styles.msg}>
+                <TailioBlob size={36} />
+                <View style={styles.bubble}>
+                  <Text style={styles.sender}>{isHelp ? 'Специалист' : 'Tailio'}</Text>
+                  <MessageBody text={message.text} />
+                </View>
+              </View>
+            ) : (
+              <View key={message.id} style={styles.userRow}>
+                <View style={styles.userBubble}>
+                  {message.attachment?.kind === 'image' ? (
+                    <Image source={{ uri: message.attachment.uri }} style={styles.attachImage} />
+                  ) : null}
+                  {message.attachment?.kind === 'file' ? (
+                    <View style={styles.fileChip}>
+                      <Ionicons name="document-outline" size={16} color={colors.purple} />
+                      <Text style={styles.fileName} numberOfLines={1}>
+                        {message.attachment.name}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.userText}>{message.text}</Text>
+                </View>
+              </View>
+            ),
+          )}
+          {typing ? (
+            <View style={styles.msg}>
+              <TailioBlob size={36} />
+              <View style={styles.typingBubble}>
+                <ActivityIndicator size="small" color={colors.purple} />
+                <Text style={styles.typingText}>оператор печатает ответ…</Text>
+              </View>
+            </View>
+          ) : null}
+        </ScrollView>
+
+        {!isHelp ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chips}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Chip label="Есть ли повод для беспокойства?" onPress={() => onChip('Есть ли повод для беспокойства?')} />
+            <Chip label={`Где сейчас ${pet.name}?`} onPress={() => onChip(`Где сейчас ${pet.name}?`)} />
+          </ScrollView>
+        ) : null}
+
+        {menuOpen ? (
+          <View style={styles.menu}>
+            <MenuItem icon="camera-outline" label="Камера" onPress={() => onAttach('camera')} />
+            <MenuItem icon="image-outline" label="Фото" onPress={() => onAttach('gallery')} />
+            <MenuItem icon="document-outline" label="Файл" onPress={() => onAttach('file')} />
           </View>
+        ) : null}
+
+        <View style={styles.inputRow}>
+          <Pressable
+            style={[styles.round, menuOpen && styles.roundActive]}
+            onPress={() => setMenuOpen((value) => !value)}
+            accessibilityLabel="Вложения"
+          >
+            <Ionicons name="attach" size={18} color={colors.white} />
+          </Pressable>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={listening ? 'Слушаю…' : `Спросить про ${pet.name}`}
+            placeholderTextColor={colors.muted}
+            style={styles.input}
+            multiline
+            editable={!typing}
+            onSubmitEditing={onSend}
+            returnKeyType="send"
+          />
+          {canSend ? (
+            <Pressable style={[styles.round, styles.sendBtn]} onPress={onSend} accessibilityLabel="Отправить">
+              <Ionicons name="arrow-up" size={18} color={colors.white} />
+            </Pressable>
+          ) : (
+            <Pressable
+              style={[styles.round, styles.micBtn, listening && styles.micListening]}
+              onPress={onMic}
+              accessibilityLabel="Голосовой ввод"
+            >
+              <Ionicons name={listening ? 'stop' : 'mic'} size={18} color={colors.white} />
+            </Pressable>
+          )}
         </View>
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        <Chip label="Есть ли повод для беспокойства?" />
-        <Chip label={`Где сейчас ${pet.name}?`} />
-      </ScrollView>
-      {menu ? (
-        <View style={styles.menu}>
-          <Text style={styles.menuItem}>Камера</Text>
-          <Text style={styles.menuItem}>Галерея</Text>
-          <Text style={styles.menuItem}>Файл</Text>
-        </View>
-      ) : null}
-      <View style={styles.inputRow}>
-        <Pressable style={styles.round} onPress={() => setMenu((value) => !value)}>
-          <Ionicons name="attach" size={18} color={colors.white} />
-        </Pressable>
-        <TextInput placeholder={`Спросить про ${pet.name}`} placeholderTextColor={colors.muted} style={styles.input} />
-        <View style={[styles.round, { backgroundColor: colors.purple }]}>
-          <Ionicons name="mic" size={18} color={colors.white} />
-        </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function Chip({ label }: { label: string }) {
+function MessageBody({ text }: { text: string }) {
+  const parts = text.split(/(спокоен|нормы|норме)/gi);
   return (
-    <View style={styles.chip}>
+    <Text style={styles.text}>
+      {parts.map((part, index) => {
+        const highlight = /^(спокоен|нормы|норме)$/i.test(part);
+        return (
+          <Text key={`${part}-${index}`} style={highlight ? styles.ok : undefined}>
+            {part}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
+
+function Chip({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.chip} onPress={onPress}>
       <Text style={styles.chipText}>{label}</Text>
-    </View>
+    </Pressable>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.menuItem} onPress={onPress}>
+      <Ionicons name={icon} size={18} color={colors.ink} />
+      <Text style={styles.menuItemText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -79,16 +334,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.paper,
   },
+  flex: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
     paddingBottom: 8,
-  },
-  back: {
-    fontSize: 22,
-    color: colors.ink,
   },
   title: {
     ...type.subtitle,
@@ -97,6 +351,8 @@ const styles = StyleSheet.create({
   feed: {
     padding: spacing.xl,
     gap: 16,
+    paddingBottom: 8,
+    flexGrow: 1,
   },
   day: {
     ...type.caption,
@@ -110,7 +366,7 @@ const styles = StyleSheet.create({
   },
   bubble: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   sender: {
     ...type.subtitle,
@@ -124,17 +380,68 @@ const styles = StyleSheet.create({
     color: colors.green,
     fontFamily: 'Inter_600SemiBold',
   },
+  userRow: {
+    alignItems: 'flex-end',
+  },
+  userBubble: {
+    maxWidth: '82%',
+    backgroundColor: colors.purpleSoft,
+    borderRadius: 18,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  userText: {
+    ...type.body,
+    color: colors.ink,
+  },
+  attachImage: {
+    width: 180,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: colors.linenDeep,
+  },
+  fileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.paper,
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  fileName: {
+    ...type.caption,
+    color: colors.ink,
+    flexShrink: 1,
+  },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.bg,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  typingText: {
+    ...type.caption,
+    color: colors.muted,
+  },
   chips: {
     paddingHorizontal: spacing.xl,
     gap: 8,
-    paddingBottom: 8,
+    paddingBottom: 10,
+    alignItems: 'center',
   },
   chip: {
+    backgroundColor: colors.lavender,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: '#D9D0F5',
     borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   chipText: {
     ...type.caption,
@@ -147,16 +454,30 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 12,
-    gap: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    alignSelf: 'flex-start',
+    minWidth: 150,
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  menuItemText: {
     ...type.body,
     color: colors.ink,
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
@@ -169,12 +490,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  roundActive: {
+    backgroundColor: colors.ink,
+  },
+  micBtn: {
+    backgroundColor: colors.purple,
+  },
+  micListening: {
+    backgroundColor: colors.red,
+  },
+  sendBtn: {
+    backgroundColor: colors.purple,
+  },
   input: {
     flex: 1,
-    height: 44,
+    minHeight: 44,
+    maxHeight: 110,
     borderRadius: 22,
     backgroundColor: '#F3F3F5',
     paddingHorizontal: 14,
+    paddingTop: Platform.OS === 'ios' ? 12 : 10,
+    paddingBottom: 10,
     fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: colors.ink,
   },
 });

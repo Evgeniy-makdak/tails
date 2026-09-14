@@ -17,7 +17,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.hvostik.app",
       "infoPlist": {
-        "CFBundleDisplayName": "Хвостик"
+        "CFBundleDisplayName": "Хвостик",
+        "NSCameraUsageDescription": "Хвостик использует камеру, чтобы прикрепить фото питомца в чат со специалистом.",
+        "NSPhotoLibraryUsageDescription": "Хвостик использует галерею для вложений в чат и профиля питомца.",
+        "NSMicrophoneUsageDescription": "Хвостик использует микрофон для голосового набора в чате."
       }
     },
     "android": {
@@ -25,7 +28,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F7F1E8"
       },
-      "package": "com.hvostik.app"
+      "package": "com.hvostik.app",
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -44,7 +52,15 @@
     "plugins": [
       "expo-font",
       "expo-splash-screen",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Хвостик использует галерею для вложений в чат.",
+          "cameraPermission": "Хвостик использует камеру для вложений в чат.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

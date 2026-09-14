@@ -148,7 +148,7 @@ export function HomeScreen() {
           )}
         </SafeAreaView>
 
-        <Pressable style={styles.fab} onPress={() => navigation.navigate('Chat')}>
+        <Pressable style={styles.fab} onPress={() => navigation.navigate('Chat', { mode: 'tailio' })}>
           <Ionicons name="color-wand-outline" size={22} color={colors.white} />
         </Pressable>
       </View>

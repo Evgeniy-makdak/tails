@@ -5,7 +5,8 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "module": "preserve",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "types": []
   },
   "include": [
     "**/*.ts",

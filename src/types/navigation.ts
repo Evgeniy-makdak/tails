@@ -26,7 +26,7 @@ export type AppStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   Notifications: undefined;
   AiSummary: undefined;
-  Chat: undefined;
+  Chat: { mode?: 'tailio' | 'help' } | undefined;
   MetricDetail: { metricId: MetricId };
   ReminderDetail: { reminderId: string };
   EventDetail: { eventId: string };

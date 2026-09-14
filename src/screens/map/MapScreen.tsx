@@ -17,6 +17,7 @@ import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
 import { playPetCall } from '../../utils/petSounds';
+import { contactHelpService, notifyRelatives, sharePetGeolocation } from '../../utils/sosActions';
 
 type MapNav = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Map'>,
@@ -96,6 +97,23 @@ export function MapScreen() {
   const markNotFound = () => setSosPhase('notFound');
   const continueSearch = () => setSosPhase('continue');
   const stopSearch = () => setSosPhase('off');
+  const liveCoords = coordsLabel ?? '59.9362, 30.3141';
+
+  const onNotifyRelatives = () => {
+    void notifyRelatives(pet.name, liveCoords);
+  };
+
+  const onShareGeolocation = () => {
+    void sharePetGeolocation(pet.name, liveCoords);
+  };
+
+  const onContactHelp = () => {
+    void contactHelpService({
+      petName: pet.name,
+      coordsLabel: liveCoords,
+      onOpenChat: () => navigation.navigate('Chat', { mode: 'help' }),
+    });
+  };
 
   const toast =
     sosPhase === 'found'
@@ -221,17 +239,17 @@ export function MapScreen() {
         {expanded && sosActive ? (
           <View style={styles.sosPanel}>
             <Text style={styles.sosTitle}>SOS-режим</Text>
-            <View style={styles.sosLinks}>
-              <Pressable style={styles.sosLink} onPress={() => Alert.alert('Сообщить близким', 'Демо: уведомление отправлено контактам.')}>
-                <Ionicons name="flag-outline" size={16} color={colors.red} />
-                <Text style={styles.sosLinkText}>Сообщить близким</Text>
+            <View style={styles.sosCards}>
+              <Pressable style={styles.sosCard} onPress={onNotifyRelatives}>
+                <Ionicons name="flag-outline" size={22} color={colors.red} />
+                <Text style={styles.sosCardText}>Сообщить близким</Text>
               </Pressable>
-              <Pressable style={styles.sosLink} onPress={() => Alert.alert('Поделиться', 'Демо: ссылка на геолокацию скопирована.')}>
-                <Ionicons name="share-outline" size={16} color={colors.red} />
-                <Text style={styles.sosLinkText}>Поделиться геолокацией</Text>
+              <Pressable style={styles.sosCard} onPress={onShareGeolocation}>
+                <Ionicons name="share-outline" size={22} color={colors.red} />
+                <Text style={styles.sosCardText}>Поделиться геолокацией</Text>
               </Pressable>
             </View>
-            <Pressable style={styles.callBtn} onPress={() => Alert.alert('Служба помощи', 'Демо: звонок в службу помощи.')}>
+            <Pressable style={styles.callBtn} onPress={onContactHelp}>
               <Text style={styles.callText}>Связаться со службой помощи</Text>
             </Pressable>
             <Button label="Выйти из режима" variant="ghost" onPress={exitSosAsk} />
@@ -266,12 +284,8 @@ export function MapScreen() {
           Поиск продолжается. Мы сообщим, когда появится новый сигнал ошейника.
         </Text>
         <Button label="Продолжить поиск" onPress={continueSearch} />
-        <Button label="Получить помощь" variant="soft" onPress={() => Alert.alert('Помощь', 'Демо: заявка в поддержку.')} />
-        <Button
-          label="Поделиться геолокацией"
-          variant="ghost"
-          onPress={() => Alert.alert('Поделиться', 'Демо: ссылка скопирована.')}
-        />
+        <Button label="Получить помощь" variant="soft" onPress={onContactHelp} />
+        <Button label="Поделиться геолокацией" variant="ghost" onPress={onShareGeolocation} />
       </InAppSheet>
 
       <InAppSheet visible={sosPhase === 'continue'} onClose={stopSearch}>
@@ -287,11 +301,7 @@ export function MapScreen() {
             label="Построить маршрут"
             onPress={() => Alert.alert('Маршрут', 'Демо: маршрут до последней точки построен.')}
           />
-          <SosAction
-            icon="flag-outline"
-            label="Сообщить близким"
-            onPress={() => Alert.alert('Сообщить близким', 'Демо: уведомление отправлено.')}
-          />
+          <SosAction icon="flag-outline" label="Сообщить близким" onPress={onNotifyRelatives} />
         </View>
         <Pressable style={styles.stopBtn} onPress={stopSearch}>
           <Text style={styles.stopText}>Остановить поиск</Text>
@@ -575,18 +585,25 @@ const styles = StyleSheet.create({
     color: colors.red,
     fontSize: 22,
   },
-  sosLinks: {
-    gap: 8,
-  },
-  sosLink: {
+  sosCards: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
   },
-  sosLinkText: {
-    ...type.body,
+  sosCard: {
+    flex: 1,
+    minHeight: 88,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 12,
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  sosCardText: {
+    ...type.caption,
     color: colors.ink,
+    fontFamily: 'Inter_600SemiBold',
   },
   sheetTitle: {
     ...type.title,
