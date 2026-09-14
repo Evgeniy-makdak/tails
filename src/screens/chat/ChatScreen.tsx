@@ -189,7 +189,12 @@ export function ChatScreen({ navigation, route }: Props) {
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView ref={feedRef} contentContainerStyle={styles.feed} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={feedRef}
+          style={styles.feedScroll}
+          contentContainerStyle={styles.feed}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.day}>Сегодня</Text>
           {messages.map((message) =>
             message.role === 'bot' ? (
@@ -230,58 +235,61 @@ export function ChatScreen({ navigation, route }: Props) {
           ) : null}
         </ScrollView>
 
-        {!isHelp ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chips}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Chip label="Есть ли повод для беспокойства?" onPress={() => onChip('Есть ли повод для беспокойства?')} />
-            <Chip label={`Где сейчас ${pet.name}?`} onPress={() => onChip(`Где сейчас ${pet.name}?`)} />
-          </ScrollView>
-        ) : null}
-
-        {menuOpen ? (
-          <View style={styles.menu}>
-            <MenuItem icon="camera-outline" label="Камера" onPress={() => onAttach('camera')} />
-            <MenuItem icon="image-outline" label="Фото" onPress={() => onAttach('gallery')} />
-            <MenuItem icon="document-outline" label="Файл" onPress={() => onAttach('file')} />
-          </View>
-        ) : null}
-
-        <View style={styles.inputRow}>
-          <Pressable
-            style={[styles.round, menuOpen && styles.roundActive]}
-            onPress={() => setMenuOpen((value) => !value)}
-            accessibilityLabel="Вложения"
-          >
-            <Ionicons name="attach" size={18} color={colors.white} />
-          </Pressable>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={listening ? 'Слушаю…' : `Спросить про ${pet.name}`}
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            multiline
-            editable={!typing}
-            onSubmitEditing={onSend}
-            returnKeyType="send"
-          />
-          {canSend ? (
-            <Pressable style={[styles.round, styles.sendBtn]} onPress={onSend} accessibilityLabel="Отправить">
-              <Ionicons name="arrow-up" size={18} color={colors.white} />
-            </Pressable>
-          ) : (
-            <Pressable
-              style={[styles.round, styles.micBtn, listening && styles.micListening]}
-              onPress={onMic}
-              accessibilityLabel="Голосовой ввод"
+        <View style={styles.composer}>
+          {!isHelp ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipsScroll}
+              contentContainerStyle={styles.chips}
+              keyboardShouldPersistTaps="handled"
             >
-              <Ionicons name={listening ? 'stop' : 'mic'} size={18} color={colors.white} />
+              <Chip label="Есть ли повод для беспокойства?" onPress={() => onChip('Есть ли повод для беспокойства?')} />
+              <Chip label={`Где сейчас ${pet.name}?`} onPress={() => onChip(`Где сейчас ${pet.name}?`)} />
+            </ScrollView>
+          ) : null}
+
+          {menuOpen ? (
+            <View style={styles.menu}>
+              <MenuItem icon="camera-outline" label="Камера" onPress={() => onAttach('camera')} />
+              <MenuItem icon="image-outline" label="Фото" onPress={() => onAttach('gallery')} />
+              <MenuItem icon="document-outline" label="Файл" onPress={() => onAttach('file')} />
+            </View>
+          ) : null}
+
+          <View style={styles.inputRow}>
+            <Pressable
+              style={[styles.round, menuOpen && styles.roundActive]}
+              onPress={() => setMenuOpen((value) => !value)}
+              accessibilityLabel="Вложения"
+            >
+              <Ionicons name="attach" size={18} color={colors.white} />
             </Pressable>
-          )}
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={listening ? 'Слушаю…' : `Спросить про ${pet.name}`}
+              placeholderTextColor={colors.muted}
+              style={styles.input}
+              multiline
+              editable={!typing}
+              onSubmitEditing={onSend}
+              returnKeyType="send"
+            />
+            {canSend ? (
+              <Pressable style={[styles.round, styles.sendBtn]} onPress={onSend} accessibilityLabel="Отправить">
+                <Ionicons name="arrow-up" size={18} color={colors.white} />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.round, styles.micBtn, listening && styles.micListening]}
+                onPress={onMic}
+                accessibilityLabel="Голосовой ввод"
+              >
+                <Ionicons name={listening ? 'stop' : 'mic'} size={18} color={colors.white} />
+              </Pressable>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -348,11 +356,23 @@ const styles = StyleSheet.create({
     ...type.subtitle,
     color: colors.ink,
   },
+  feedScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   feed: {
     padding: spacing.xl,
     gap: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
     flexGrow: 1,
+  },
+  composer: {
+    flexShrink: 0,
+    backgroundColor: colors.paper,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingTop: 8,
+    zIndex: 2,
   },
   day: {
     ...type.caption,
@@ -428,6 +448,10 @@ const styles = StyleSheet.create({
   typingText: {
     ...type.caption,
     color: colors.muted,
+  },
+  chipsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
   },
   chips: {
     paddingHorizontal: spacing.xl,

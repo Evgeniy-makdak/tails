@@ -5,7 +5,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PetAvatar } from '../../components/pet/PetAvatar';
@@ -17,7 +17,13 @@ import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
 import { playPetCall } from '../../utils/petSounds';
-import { contactHelpService, notifyRelatives, sharePetGeolocation } from '../../utils/sosActions';
+import {
+  DEMO_SOS_CONTACTS,
+  HELP_HOTLINE_DISPLAY,
+  buildNotifyMessage,
+  callHelpHotline,
+  sharePetGeolocation,
+} from '../../utils/sosActions';
 
 type MapNav = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Map'>,
@@ -25,6 +31,7 @@ type MapNav = CompositeNavigationProp<
 >;
 
 type SosPhase = 'off' | 'info' | 'active' | 'askFound' | 'notFound' | 'continue' | 'found';
+type SosActionSheet = 'help' | 'notify' | 'notifySent' | 'shareDone' | 'route' | 'callInfo' | null;
 
 export function MapScreen() {
   const navigation = useNavigation<MapNav>();
@@ -36,6 +43,8 @@ export function MapScreen() {
   });
   const [expanded, setExpanded] = useState(true);
   const [sosPhase, setSosPhase] = useState<SosPhase>('off');
+  const [actionSheet, setActionSheet] = useState<SosActionSheet>(null);
+  const [shareHint, setShareHint] = useState('');
   const [soundOn, setSoundOn] = useState(false);
   const [zoom, setZoom] = useState(1);
   const lightPulse = useRef(new Animated.Value(0)).current;
@@ -75,7 +84,8 @@ export function MapScreen() {
     setSoundOn(true);
     const ok = await playPetCall(pet.kind);
     if (!ok) {
-      Alert.alert('Сигнал', pet.kind === 'cat' ? 'Мяу! (демо без звука на этой платформе)' : 'Гав! (демо без звука на этой платформе)');
+      setShareHint(pet.kind === 'cat' ? 'Мяу! (демо без звука на этой платформе)' : 'Гав! (демо без звука на этой платформе)');
+      setActionSheet('shareDone');
     }
     setTimeout(() => setSoundOn(false), 3200);
   };
@@ -98,21 +108,45 @@ export function MapScreen() {
   const continueSearch = () => setSosPhase('continue');
   const stopSearch = () => setSosPhase('off');
   const liveCoords = coordsLabel ?? '59.9362, 30.3141';
+  const notifyPreview = buildNotifyMessage(pet.name, liveCoords);
+  const contactNames = DEMO_SOS_CONTACTS.map((c) => c.name).join(', ');
 
-  const onNotifyRelatives = () => {
-    void notifyRelatives(pet.name, liveCoords);
+  const onNotifyRelatives = () => setActionSheet('notify');
+
+  const onShareGeolocation = async () => {
+    const result = await sharePetGeolocation(pet.name, liveCoords);
+    if (!result.ok) {
+      return;
+    }
+    setShareHint(
+      result.method === 'clipboard'
+        ? 'Ссылка на точку скопирована в буфер обмена.'
+        : result.method === 'share'
+          ? 'Геолокация отправлена.'
+          : result.message,
+    );
+    setActionSheet('shareDone');
   };
 
-  const onShareGeolocation = () => {
-    void sharePetGeolocation(pet.name, liveCoords);
+  const onContactHelp = () => setActionSheet('help');
+
+  const onConfirmNotify = () => {
+    setActionSheet('notifySent');
   };
 
-  const onContactHelp = () => {
-    void contactHelpService({
-      petName: pet.name,
-      coordsLabel: liveCoords,
-      onOpenChat: () => navigation.navigate('Chat', { mode: 'help' }),
-    });
+  const onCallHelp = async () => {
+    const result = await callHelpHotline();
+    setShareHint(
+      result.ok
+        ? `Набираем ${result.detail}…`
+        : `Демо: линия поддержки Tailio — ${result.detail}`,
+    );
+    setActionSheet('callInfo');
+  };
+
+  const onOpenHelpChat = () => {
+    setActionSheet(null);
+    navigation.navigate('Chat', { mode: 'help' });
   };
 
   const toast =
@@ -296,16 +330,53 @@ export function MapScreen() {
         <Text style={[styles.blockTitle, { marginTop: 8 }]}>Что можно сделать</Text>
         <View style={styles.sosGrid}>
           <SosAction icon="volume-high-outline" label="Громкий сигнал" onPress={toggleSound} />
-          <SosAction
-            icon="navigate-outline"
-            label="Построить маршрут"
-            onPress={() => Alert.alert('Маршрут', 'Демо: маршрут до последней точки построен.')}
-          />
+          <SosAction icon="navigate-outline" label="Построить маршрут" onPress={() => setActionSheet('route')} />
           <SosAction icon="flag-outline" label="Сообщить близким" onPress={onNotifyRelatives} />
         </View>
         <Pressable style={styles.stopBtn} onPress={stopSearch}>
           <Text style={styles.stopText}>Остановить поиск</Text>
         </Pressable>
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'help'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Служба помощи</Text>
+        <Text style={styles.sheetCopy}>Связаться по поводу {pet.name}. Координаты: {liveCoords}</Text>
+        <Button label={`Позвонить · ${HELP_HOTLINE_DISPLAY}`} onPress={() => void onCallHelp()} />
+        <Button label="Чат со специалистом" variant="soft" onPress={onOpenHelpChat} />
+        <Button label="Отмена" variant="ghost" onPress={() => setActionSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'notify'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Сообщить близким</Text>
+        <Text style={styles.sheetCopy}>Отправить уведомление: {contactNames}?</Text>
+        <Text style={styles.sheetCopy}>«{notifyPreview}»</Text>
+        <Button label="Отправить" onPress={onConfirmNotify} />
+        <Button label="Отмена" variant="ghost" onPress={() => setActionSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'notifySent'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Отправлено</Text>
+        <Text style={styles.sheetCopy}>Близкие уведомлены о поиске {pet.name}.</Text>
+        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'shareDone'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Готово</Text>
+        <Text style={styles.sheetCopy}>{shareHint}</Text>
+        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'callInfo'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Звонок</Text>
+        <Text style={styles.sheetCopy}>{shareHint}</Text>
+        <Button label="Чат со специалистом" variant="soft" onPress={onOpenHelpChat} />
+        <Button label="Закрыть" variant="ghost" onPress={() => setActionSheet(null)} />
+      </InAppSheet>
+
+      <InAppSheet visible={actionSheet === 'route'} onClose={() => setActionSheet(null)}>
+        <Text style={styles.sheetTitle}>Маршрут</Text>
+        <Text style={styles.sheetCopy}>Демо: маршрут до последней точки {pet.name} построен ({liveCoords}).</Text>
+        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
       </InAppSheet>
     </View>
   );
