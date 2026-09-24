@@ -29,22 +29,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve public chat API
+        id: chat
+        env:
+          CHAT_API_URL: ${{ vars.CHAT_API_URL }}
+        run: |
+          if [ -n "$CHAT_API_URL" ] && ! echo "$CHAT_API_URL" | grep -q 'localhost'; then
+            echo "live=1" >> "$GITHUB_OUTPUT"
+            echo "url=$CHAT_API_URL" >> "$GITHUB_OUTPUT"
+            echo "Using public chat API: $CHAT_API_URL"
+          else
+            echo "live=0" >> "$GITHUB_OUTPUT"
+            echo "url=" >> "$GITHUB_OUTPUT"
+            echo "No CHAT_API_URL variable — Pages will ship demo chat (set Variable for live)."
+          fi
+
       - name: Build web app
         env:
-          EXPO_PUBLIC_CHAT_LIVE: '1'
-          # Public HTTPS API for Pages (must not be localhost — mixed content + remote devices).
-          # Prefer repo Variable CHAT_API_URL (Settings → Variables). Fallback = temporary tunnel.
-          EXPO_PUBLIC_API_URL: ${{ vars.CHAT_API_URL || 'https://06e1cf42cc4f45.lhr.life' }}
+          EXPO_PUBLIC_CHAT_LIVE: ${{ steps.chat.outputs.live }}
+          EXPO_PUBLIC_API_URL: ${{ steps.chat.outputs.url }}
         run: |
-          echo "Building with API: $EXPO_PUBLIC_API_URL"
-          if echo "$EXPO_PUBLIC_API_URL" | grep -q 'localhost'; then
-            echo "Refusing to bake localhost API into Pages build"
-            exit 1
-          fi
           npm run build:web
-          if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
-            echo "Public API URL was not inlined into the bundle (check static process.env access)"
-            exit 1
+          if [ "$EXPO_PUBLIC_CHAT_LIVE" = "1" ]; then
+            if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
+              echo "::error::API URL was not inlined into the bundle"
+              exit 1
+            fi
           fi
 
       - name: Disable Jekyll

@@ -152,13 +152,18 @@ Claim атомарный: обновление только если `status=wai
 
 ## Важно про деплой
 
-- **GitHub Pages** хостит только Expo web-клиент. Live-чат на Pages требует публичный **HTTPS/WSS** API в `EXPO_PUBLIC_API_URL`. С HTTPS-страницы нельзя ходить на `http://localhost` — будет `Failed to fetch`.
-- В workflow используется репозиторная **Variable** `CHAT_API_URL` (Settings → Secrets and variables → Actions → Variables), иначе fallback-URL туннеля из `deploy-pages.yml`.
-- Временный туннель при живом `npm run chat:server`:  
-  `ssh -R 80:127.0.0.1:8787 nokey@localhost.run`  
-  Подставьте выданный `https://….lhr.life` в Variable `CHAT_API_URL` и пересоберите Pages (`workflow_dispatch` или push).
-- Стабильнее: задеплоить `server/` на Railway/Fly/Render и прописать постоянный URL в Variable.
-- Локально кабинет: `npm run chat:consultant` или собранный PWA на `:8787` после `npm run chat:consultant:build`.
+- **GitHub Pages** — только статический клиент. Live-чат с телефона/другого ПК требует публичный **HTTPS/WSS** API.
+- В репозитории: Settings → Secrets and variables → Actions → **Variables** → создайте `CHAT_API_URL` = `https://…` вашего `server`.
+- Если Variable пуст, workflow собирает Pages с **демо-чатом** (`EXPO_PUBLIC_CHAT_LIVE=0`), чтобы не было `Failed to fetch`.
+- Быстрый временный API (в обычном Terminal.app, не закрывать окно):
+  ```bash
+  npm run chat:server
+  # другой терминал:
+  ssh -R 80:127.0.0.1:8787 nokey@localhost.run -- --output json
+  ```
+  Скопируйте `https://….lhr.life` в Variable `CHAT_API_URL` и перезапустите workflow **Deploy GitHub Pages**.
+- Надёжнее: задеплоить `server/` на Railway / Fly / Render и прописать постоянный URL в Variable.
+- Кабинет локально: `npm run chat:consultant` (или PWA на `:8787` после `chat:consultant:build`). Закрытый диалог уходит в **История**; новое сообщение пользователя возвращает обращение в очередь с той же перепиской.
 
 ---
 
