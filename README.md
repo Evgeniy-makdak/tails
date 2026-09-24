@@ -18,6 +18,12 @@
 
 Сейчас в репозитории — рабочий интерактивный прототип. Аккаунты и питомцы хранятся **локально на устройстве** (браузер или телефон, без сервера). Демо-пользователь с Персиком: **`demo@tailio.app`**. Живой GPS, настоящая почта и оплата сторов подключаются на следующем этапе, **без смены архитектуры**.
 
+### Живой чат с консультантом
+
+Добавлены Node-сервер (`server/`), PWA-кабинет консультанта (`consultant/`) и опциональный live-режим чата в приложении. Полный гайд: **[docs/CHAT_GUIDE.md](docs/CHAT_GUIDE.md)**.
+
+Кратко: `npm run chat:server`, кабинет на `http://localhost:8787` (после `npm run chat:consultant:build`) или `npm run chat:consultant`, в приложении `.env` с `EXPO_PUBLIC_CHAT_LIVE=1`. Демо-консультант: `consultant@tailio.app` / `tailio123`.
+
 ---
 
 ## Что уже есть в прототипе
@@ -263,11 +269,15 @@ App.tsx                 вход: шрифты, рамка телефона на
 app.json                имя «Хвостик», иконки, bundle id
 eas.json                профили сборки iOS / Android
 src/navigation/         авторизация, вкладки, корневой стек
-src/screens/            сплэш, онбординг, главная, карта, здоровье, профиль
+src/screens/            сплэш, онбординг, главная, карта, здоровье, профиль, чат
+src/chat/               live WebSocket-хук чата
 src/components/         кнопки, поля, шторки, рамка телефона
 src/store/              питомцы, сессия
 src/theme/              цвета и типографика по макету
 src/data/mock.ts        тестовые питомцы и события
+server/                 API + WebSocket живого чата
+consultant/             PWA-кабинет консультанта
+docs/CHAT_GUIDE.md      гайд пользователь ↔ консультант
 assets/                 иконки, фото питомцев, фон главной
 ```
 
@@ -331,6 +341,9 @@ npx expo start --ios        # симулятор iOS
 npx expo start --android    # эмулятор Android
 npm run lint                # проверка TypeScript без сборки
 npm run build:web           # production-сборка для GitHub Pages
+npm run chat:server         # API + WebSocket чата (:8787)
+npm run chat:consultant     # кабинет консультанта Vite (:5173)
+npm run chat:consultant:build  # собрать PWA в server/public
 ```
 
 ---

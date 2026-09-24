@@ -16,23 +16,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useLiveChat } from '../../chat/useLiveChat';
+import type { UiChatMessage } from '../../chat/types';
 import { TailioBlob } from '../../components/brand/TailioMark';
-import { useActivePet } from '../../store/useAppStore';
+import { features } from '../../config/features';
+import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 import { pickChatCamera, pickChatDocument, pickChatGallery, type ChatAttachment } from '../../utils/chatAttachments';
 import { startVoiceCapture } from '../../utils/voiceInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Chat'>;
-
-type ChatRole = 'bot' | 'user';
-
-type ChatMessage = {
-  id: string;
-  role: ChatRole;
-  text: string;
-  attachment?: ChatAttachment;
-};
 
 const OPERATOR_REPLIES = [
   'Мы получили ваш вопрос и уже ищем оператора для ответа…',
@@ -48,26 +42,47 @@ function uid() {
 
 export function ChatScreen({ navigation, route }: Props) {
   const pet = useActivePet();
+  const currentEmail = useAppStore((s) => s.currentEmail);
+  const ownerName = useAppStore((s) => s.ownerName);
+  const ownerCity = useAppStore((s) => s.ownerCity);
   const mode = route.params?.mode ?? 'tailio';
   const isHelp = mode === 'help';
+  const liveEnabled = features.chatLive;
 
-  const welcome = useMemo<ChatMessage[]>(
-    () => [
-      {
-        id: 'welcome',
-        role: 'bot',
-        text: isHelp
-          ? `Вы на связи со службой помощи Tailio. Расскажите, что случилось с ${pet.name} — специалист подключится к диалогу.`
-          : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.\n\nЯ уже проверил его состояние 👀 Сейчас он спокоен, а показатели в пределах нормы.`,
-      },
-    ],
+  const welcomeText = useMemo(
+    () =>
+      isHelp
+        ? `Вы на связи со службой помощи Tailio. Расскажите, что случилось с ${pet.name} — специалист подключится к диалогу.`
+        : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.\n\nЯ уже проверил его состояние 👀 Сейчас он спокоен, а показатели в пределах нормы.`,
     [isHelp, pet.name],
   );
 
-  const [messages, setMessages] = useState<ChatMessage[]>(welcome);
+  const welcome = useMemo<UiChatMessage[]>(
+    () => [{ id: 'welcome', role: 'bot', text: welcomeText }],
+    [welcomeText],
+  );
+
+  const live = useLiveChat({
+    enabled: liveEnabled,
+    email: currentEmail,
+    ownerName,
+    ownerCity,
+    pet: {
+      id: pet.id,
+      name: pet.name,
+      kind: pet.kind,
+      breed: pet.breed,
+      sex: pet.sex,
+      birthDate: pet.birthDate,
+      collarId: pet.collarId,
+    },
+    welcomeText,
+  });
+
+  const [demoMessages, setDemoMessages] = useState<UiChatMessage[]>(welcome);
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [typing, setTyping] = useState(false);
+  const [demoTyping, setDemoTyping] = useState(false);
   const [listening, setListening] = useState(false);
   const [userQuestionCount, setUserQuestionCount] = useState(0);
 
@@ -75,10 +90,15 @@ export function ChatScreen({ navigation, route }: Props) {
   const replyTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const voiceStopRef = useRef<(() => void) | null>(null);
 
+  const messages = liveEnabled ? live.messages : demoMessages;
+  const typing = liveEnabled ? live.typing : demoTyping;
+
   useEffect(() => {
-    setMessages(welcome);
-    setUserQuestionCount(0);
-  }, [welcome]);
+    if (!liveEnabled) {
+      setDemoMessages(welcome);
+      setUserQuestionCount(0);
+    }
+  }, [welcome, liveEnabled]);
 
   useEffect(() => {
     return () => {
@@ -93,14 +113,14 @@ export function ChatScreen({ navigation, route }: Props) {
   }, [messages, typing]);
 
   const scheduleOperatorReply = (nextCount: number) => {
-    setTyping(true);
+    setDemoTyping(true);
     const delay = 2000 + Math.floor(Math.random() * 1000);
     const timer = setTimeout(() => {
       const reply =
         OPERATOR_REPLIES[(nextCount - 1) % OPERATOR_REPLIES.length] ??
         'Мы получили ваш вопрос и уже ищем оператора для ответа…';
-      setMessages((prev) => [...prev, { id: uid(), role: 'bot', text: reply }]);
-      setTyping(false);
+      setDemoMessages((prev) => [...prev, { id: uid(), role: 'bot', text: reply }]);
+      setDemoTyping(false);
     }, delay);
     replyTimers.current.push(timer);
   };
@@ -113,14 +133,33 @@ export function ChatScreen({ navigation, route }: Props) {
 
     setMenuOpen(false);
     setDraft('');
+
+    const body =
+      text || (attachment?.kind === 'image' ? 'Прикрепил(а) изображение' : `Прикрепил(а) файл: ${attachment?.name}`);
+
+    if (liveEnabled) {
+      const payload = attachment
+        ? `${body}${attachment.kind === 'image' ? ' [фото]' : ` [файл: ${attachment.name}]`}`
+        : body;
+      const ok = live.sendText(payload);
+      if (!ok) {
+        live.setMessages((prev) => [
+          ...prev,
+          { id: uid(), role: 'system', text: 'Не удалось отправить. Проверьте связь с сервером.' },
+        ]);
+      }
+      live.onDraftChange('');
+      return;
+    }
+
     const nextCount = userQuestionCount + 1;
     setUserQuestionCount(nextCount);
-    setMessages((prev) => [
+    setDemoMessages((prev) => [
       ...prev,
       {
         id: uid(),
         role: 'user',
-        text: text || (attachment?.kind === 'image' ? 'Фото во вложении' : 'Файл во вложении'),
+        text: body,
         attachment,
       },
     ]);
@@ -171,7 +210,24 @@ export function ChatScreen({ navigation, route }: Props) {
     }
   };
 
+  const onChangeDraft = (value: string) => {
+    setDraft(value);
+    if (liveEnabled) {
+      live.onDraftChange(value);
+    }
+  };
+
   const canSend = draft.trim().length > 0;
+  const statusLabel =
+    liveEnabled && live.status === 'connecting'
+      ? 'Подключение…'
+      : liveEnabled && live.status === 'offline'
+        ? 'Нет связи'
+        : liveEnabled && live.conversation?.status === 'waiting'
+          ? 'Ищем консультанта…'
+          : liveEnabled && live.conversation?.status === 'active'
+            ? 'Консультант на связи'
+            : null;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -185,9 +241,18 @@ export function ChatScreen({ navigation, route }: Props) {
           <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={colors.ink} />
           </Pressable>
-          <Text style={styles.title}>{isHelp ? 'Служба помощи' : 'Tailio Чат'}</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>{isHelp ? 'Служба помощи' : 'Tailio Чат'}</Text>
+            {statusLabel ? <Text style={styles.status}>{statusLabel}</Text> : null}
+          </View>
           <View style={{ width: 24 }} />
         </View>
+
+        {liveEnabled && live.error ? (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>{live.error}</Text>
+          </View>
+        ) : null}
 
         <ScrollView
           ref={feedRef}
@@ -196,16 +261,26 @@ export function ChatScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.day}>Сегодня</Text>
-          {messages.map((message) =>
-            message.role === 'bot' ? (
-              <View key={message.id} style={styles.msg}>
-                <TailioBlob size={36} />
-                <View style={styles.bubble}>
-                  <Text style={styles.sender}>{isHelp ? 'Специалист' : 'Tailio'}</Text>
-                  <MessageBody text={message.text} />
+          {messages.map((message) => {
+            if (message.role === 'system') {
+              return (
+                <Text key={message.id} style={styles.systemText}>
+                  {message.text}
+                </Text>
+              );
+            }
+            if (message.role === 'bot') {
+              return (
+                <View key={message.id} style={styles.msg}>
+                  <TailioBlob size={36} />
+                  <View style={styles.bubble}>
+                    <Text style={styles.sender}>{isHelp || liveEnabled ? 'Специалист' : 'Tailio'}</Text>
+                    <MessageBody text={message.text} />
+                  </View>
                 </View>
-              </View>
-            ) : (
+              );
+            }
+            return (
               <View key={message.id} style={styles.userRow}>
                 <View style={styles.userBubble}>
                   {message.attachment?.kind === 'image' ? (
@@ -222,8 +297,8 @@ export function ChatScreen({ navigation, route }: Props) {
                   <Text style={styles.userText}>{message.text}</Text>
                 </View>
               </View>
-            ),
-          )}
+            );
+          })}
           {typing ? (
             <View style={styles.msg}>
               <TailioBlob size={36} />
@@ -267,12 +342,12 @@ export function ChatScreen({ navigation, route }: Props) {
             </Pressable>
             <TextInput
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={onChangeDraft}
               placeholder={listening ? 'Слушаю…' : `Спросить про ${pet.name}`}
               placeholderTextColor={colors.muted}
               style={styles.input}
               multiline
-              editable={!typing}
+              editable={!listening}
               onSubmitEditing={onSend}
               returnKeyType="send"
             />
@@ -352,9 +427,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: 8,
   },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
   title: {
     ...type.subtitle,
     color: colors.ink,
+  },
+  status: {
+    ...type.caption,
+    color: colors.purple,
+    marginTop: 2,
+  },
+  banner: {
+    marginHorizontal: spacing.xl,
+    marginBottom: 8,
+    backgroundColor: '#FDECEC',
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  bannerText: {
+    ...type.caption,
+    color: colors.red,
   },
   feedScroll: {
     flex: 1,
@@ -378,6 +474,12 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.muted,
     textAlign: 'center',
+  },
+  systemText: {
+    ...type.caption,
+    color: colors.muted,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
   msg: {
     flexDirection: 'row',

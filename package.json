@@ -11,7 +11,11 @@
     "tunnel": "node scripts/start-tunnel.js",
     "postinstall": "node scripts/patch-expo-https-tunnel.js",
     "lint": "tsc --noEmit",
-    "build:web": "expo export -p web && node scripts/patch-web-index.js"
+    "build:web": "expo export -p web && node scripts/patch-web-index.js",
+    "chat:server": "npm --prefix server start",
+    "chat:server:dev": "npm --prefix server run dev",
+    "chat:consultant": "npm --prefix consultant run dev",
+    "chat:consultant:build": "npm --prefix consultant run build"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -35,6 +39,8 @@
     "expo-sharing": "~14.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "mime-db": "^1.52.0",
+    "mime-types": "^2.1.35",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

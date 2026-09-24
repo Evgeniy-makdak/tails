@@ -30,6 +30,11 @@ jobs:
         run: npm ci
 
       - name: Build web app
+        env:
+          EXPO_PUBLIC_CHAT_LIVE: '1'
+          # Public Tailio chat API (https://…). Set repo secret CHAT_API_URL for GitHub Pages.
+          # Without it the build still succeeds; chat will show a connection error until the secret is set.
+          EXPO_PUBLIC_API_URL: ${{ secrets.CHAT_API_URL }}
         run: npm run build:web
 
       - name: Disable Jekyll
