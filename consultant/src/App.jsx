@@ -368,14 +368,14 @@ export default function App() {
               {history.length === 0 ? <div className="empty">Закрытых диалогов пока нет</div> : null}
               {history.map((item) => (
                 <button
-                  key={item.id}
+                  key={item.userId || item.id}
                   type="button"
                   className={`dialog-card archived ${selectedId === item.id ? 'selected' : ''}`}
                   onClick={() => openConversation(item.id)}
                 >
                   <div className="dialog-title">{item.userName || item.userEmail}</div>
                   <div className="dialog-sub">
-                    {item.petName || 'Без питомца'} · архив
+                    {item.petName || 'Без питомца'} · одна история
                   </div>
                   <div className="dialog-preview">{item.preview || ''}</div>
                 </button>

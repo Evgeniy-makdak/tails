@@ -7,6 +7,7 @@ import {
   findOne,
   insert,
   nowIso,
+  removeById,
   updateById,
   updateWhere,
 } from './db.js';
@@ -63,30 +64,133 @@ export function getMessages(conversationId) {
     .map(mapMessage);
 }
 
+/** Status rank: keep the liveliest thread as the single primary chat per user. */
+function statusRank(status) {
+  if (status === 'active') return 3;
+  if (status === 'waiting') return 2;
+  if (status === 'closed') return 1;
+  return 0;
+}
+
+/**
+ * One user → one conversation. Moves all messages onto the primary thread and drops duplicates.
+ * Call before queue/history/ensure so the desk never shows several cards for the same person.
+ */
+export function consolidateUserConversations(userId) {
+  const rows = findMany('conversations', (c) => c.user_id === userId);
+  if (rows.length <= 1) {
+    return rows[0] ? getConversationById(rows[0].id) : null;
+  }
+
+  rows.sort((a, b) => {
+    const rank = statusRank(b.status) - statusRank(a.status);
+    if (rank !== 0) return rank;
+    return (b.updated_at || '').localeCompare(a.updated_at || '');
+  });
+
+  const primary = rows[0];
+  const extras = rows.slice(1);
+
+  for (const extra of extras) {
+    const msgs = findMany('messages', (m) => m.conversation_id === extra.id);
+    for (const msg of msgs) {
+      updateById('messages', msg.id, { conversation_id: primary.id });
+    }
+    // Keep last known consultant/pet if primary lacks them
+    if (!primary.consultant_id && extra.consultant_id) {
+      updateById('conversations', primary.id, { consultant_id: extra.consultant_id });
+    }
+    if (!primary.pet_id && extra.pet_id) {
+      updateById('conversations', primary.id, { pet_id: extra.pet_id });
+    }
+    removeById('conversations', extra.id);
+  }
+
+  const refreshed = findById('conversations', primary.id);
+  updateById('conversations', primary.id, {
+    updated_at: refreshed?.updated_at || nowIso(),
+  });
+  return getConversationById(primary.id);
+}
+
+/** Merge every user that somehow got multiple threads (legacy / bugs). */
+export function consolidateAllUsers() {
+  const userIds = [...new Set(findMany('conversations', () => true).map((c) => c.user_id))];
+  for (const userId of userIds) {
+    consolidateUserConversations(userId);
+  }
+}
+
 export function listWaitingQueue() {
-  return findMany('conversations', (c) => c.status === 'waiting')
-    .filter((c) =>
-      findMany('messages', (m) => m.conversation_id === c.id && m.sender_role === 'user').length > 0,
-    )
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+  // Dedupe by user: at most one waiting card per owner
+  const waiting = findMany('conversations', (c) => c.status === 'waiting');
+  const byUser = new Map();
+  for (const row of waiting) {
+    consolidateUserConversations(row.user_id);
+    const fresh = findMany(
+      'conversations',
+      (c) => c.user_id === row.user_id && c.status === 'waiting',
+    )[0];
+    if (!fresh) continue;
+    const hasUserMsg = findMany(
+      'messages',
+      (m) => m.conversation_id === fresh.id && m.sender_role === 'user',
+    ).length;
+    if (!hasUserMsg) continue;
+    byUser.set(fresh.user_id, fresh);
+  }
+  return [...byUser.values()]
+    .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
     .map(enrichConversation);
 }
 
 export function listConsultantActive(consultantId) {
-  return findMany(
+  const active = findMany(
     'conversations',
     (c) => c.status === 'active' && c.consultant_id === consultantId,
-  )
+  );
+  const byUser = new Map();
+  for (const row of active) {
+    const primary = consolidateUserConversations(row.user_id);
+    if (
+      primary &&
+      primary.status === 'active' &&
+      primary.consultantId === consultantId
+    ) {
+      byUser.set(primary.userId, findById('conversations', primary.id));
+    }
+  }
+  return [...byUser.values()]
+    .filter(Boolean)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .map(enrichConversation);
 }
 
-/** Closed dialogs this consultant handled — archive / history. */
+/**
+ * Archive: one card per user (stitched thread), not per close-session.
+ * Includes users this consultant last handled whose thread is currently closed.
+ */
 export function listConsultantHistory(consultantId, limit = 40) {
-  return findMany(
+  const closed = findMany(
     'conversations',
     (c) => c.status === 'closed' && c.consultant_id === consultantId,
-  )
+  );
+  const byUser = new Map();
+  for (const row of closed) {
+    const primary = consolidateUserConversations(row.user_id);
+    if (!primary || primary.status !== 'closed') continue;
+    // After merge, consultant may still be on the primary closed thread
+    const fresh = findById('conversations', primary.id);
+    if (!fresh || fresh.consultant_id !== consultantId || fresh.status !== 'closed') continue;
+    const prev = byUser.get(fresh.user_id);
+    if (
+      !prev ||
+      (fresh.closed_at || fresh.updated_at).localeCompare(prev.closed_at || prev.updated_at) > 0
+    ) {
+      byUser.set(fresh.user_id, fresh);
+    }
+  }
+  return [...byUser.values()]
     .sort((a, b) => (b.closed_at || b.updated_at).localeCompare(a.closed_at || a.updated_at))
     .slice(0, limit)
     .map(enrichConversation);
@@ -97,47 +201,40 @@ export function listConsultantHistory(consultantId, limit = 40) {
  * Clears claim so any consultant can take it again.
  */
 export function reopenConversation(conversationId) {
-  const row = findById('conversations', conversationId);
+  let row = findById('conversations', conversationId);
+  if (!row) {
+    return { ok: false, reason: 'not_found' };
+  }
+  const primary = consolidateUserConversations(row.user_id);
+  if (!primary) {
+    return { ok: false, reason: 'not_found' };
+  }
+  row = findById('conversations', primary.id);
   if (!row || row.status !== 'closed') {
     return { ok: false, reason: 'not_closed' };
   }
   const now = nowIso();
-  updateById('conversations', conversationId, {
+  updateById('conversations', row.id, {
     status: 'waiting',
     consultant_id: null,
     claimed_at: null,
     closed_at: null,
     updated_at: now,
   });
-  insertSystemMessage(conversationId, 'Пользователь возобновил обращение. Ожидаем консультанта…');
-  return { ok: true, conversation: getConversationById(conversationId) };
+  insertSystemMessage(row.id, 'Пользователь возобновил обращение. Ожидаем консультанта…');
+  return { ok: true, conversation: getConversationById(row.id) };
 }
 
 export function ensureUserConversation(userId, petId = null) {
-  const open = findMany(
-    'conversations',
-    (c) => c.user_id === userId && (c.status === 'waiting' || c.status === 'active'),
-  ).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+  // Always collapse duplicates first → one continuous history per owner
+  let primary = consolidateUserConversations(userId);
 
-  if (open) {
-    if (petId && !open.pet_id) {
-      updateById('conversations', open.id, { pet_id: petId, updated_at: nowIso() });
+  if (primary) {
+    const row = findById('conversations', primary.id);
+    if (petId && row && !row.pet_id) {
+      updateById('conversations', primary.id, { pet_id: petId, updated_at: nowIso() });
     }
-    return getConversationById(open.id);
-  }
-
-  // Keep closed thread for history in the client; reopen only when the user sends again.
-  const closed = findMany(
-    'conversations',
-    (c) => c.user_id === userId && c.status === 'closed',
-  ).sort((a, b) => (b.closed_at || b.updated_at).localeCompare(a.closed_at || a.updated_at))[0];
-
-  if (closed) {
-    if (petId && !closed.pet_id) {
-      updateById('conversations', closed.id, { pet_id: petId, updated_at: nowIso() });
-      return getConversationById(closed.id);
-    }
-    return enrichConversation(closed);
+    return getConversationById(primary.id);
   }
 
   const id = uuid();

@@ -102,3 +102,10 @@ export function updateWhere(collection, predicate, patch) {
   if (changed) persist();
   return changed;
 }
+
+export function removeById(collection, id) {
+  const before = state[collection].length;
+  state[collection] = state[collection].filter((row) => row.id !== id);
+  if (state[collection].length !== before) persist();
+  return before - state[collection].length;
+}

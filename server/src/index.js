@@ -8,6 +8,7 @@ import { v4 as uuid } from 'uuid';
 
 import { hashPassword } from './auth.js';
 import { findOne, insert, migrate, nowIso } from './db.js';
+import { consolidateAllUsers } from './chatService.js';
 import { createApiRouter } from './routes.js';
 import { attachWebSocket } from './wsHub.js';
 
@@ -16,6 +17,7 @@ const PORT = Number(process.env.PORT || 8787);
 
 migrate();
 ensureSeedConsultant();
+consolidateAllUsers();
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
