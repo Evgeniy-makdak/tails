@@ -34,7 +34,7 @@ jobs:
           EXPO_PUBLIC_CHAT_LIVE: '1'
           # Public HTTPS API for Pages (must not be localhost — mixed content + remote devices).
           # Prefer repo Variable CHAT_API_URL (Settings → Variables). Fallback = temporary tunnel.
-          EXPO_PUBLIC_API_URL: ${{ vars.CHAT_API_URL || 'https://6b2b4d3ce9e85e.lhr.life' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.CHAT_API_URL || 'https://c318da7fbc1680.lhr.life' }}
         run: |
           echo "Building with API: $EXPO_PUBLIC_API_URL"
           if echo "$EXPO_PUBLIC_API_URL" | grep -q 'localhost'; then
