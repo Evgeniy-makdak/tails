@@ -22,6 +22,8 @@
 
 Добавлены Node-сервер (`server/`), PWA-кабинет консультанта (`consultant/`) и опциональный live-режим чата в приложении. Полный гайд: **[docs/CHAT_GUIDE.md](docs/CHAT_GUIDE.md)**.
 
+**Постоянный бэкенд без MacBook (Fly.io):** пошаговая инструкция **[docs/DEPLOY_BACKEND.md](docs/DEPLOY_BACKEND.md)**.
+
 Кратко: `npm run chat:server`, кабинет на `http://localhost:8787` (после `npm run chat:consultant:build`) или `npm run chat:consultant`, в приложении `.env` с `EXPO_PUBLIC_CHAT_LIVE=1`. Демо-консультант: `consultant@tailio.app` / `tailio123`.
 
 ---

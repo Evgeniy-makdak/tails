@@ -152,17 +152,15 @@ Claim атомарный: обновление только если `status=wai
 
 ## Важно про деплой
 
+Полная пошаговая инструкция переноса бэка на постоянный хост (Fly.io), Variable `CHAT_API_URL` и проверки с телефона: **[DEPLOY_BACKEND.md](./DEPLOY_BACKEND.md)**.
+
+Кратко:
+
 - **GitHub Pages** — только статический клиент. Live-чат с телефона требует **постоянный** публичный HTTPS/WSS API. Временные `*.lhr.life` туннели регулярно умирают → на телефоне снова `Load Failed` / `Failed to fetch`.
-- **Правильный путь:** задеплоить `server/` на Fly.io (`server/fly.toml`, `server/Dockerfile`):
-  ```bash
-  cd server
-  flyctl auth login
-  flyctl volumes create tailio_data --region ams --size 1
-  flyctl deploy
-  ```
-  Затем в GitHub → Settings → Variables задайте `CHAT_API_URL=https://tailio-chat.fly.dev` и пересоберите Pages.
+- **Правильный путь:** задеплоить `server/` на Fly.io (`server/fly.toml`, `server/Dockerfile`) по гайду выше, затем Variable `CHAT_API_URL=https://tailio-chat.fly.dev` и пересборка Pages.
 - Пока Variable пуст, workflow временно печёт URL туннеля из `deploy-pages.yml` (держите `npm run chat:server` + SSH-туннель живыми).
 - Кабинет локально: `npm run chat:consultant` (+ API `:8787`). Один пользователь = одна склейка истории.
+- Регистрация в приложении «Хвостик» пока **локальная на устройстве** — на бэк чата это не переносится одним деплоем.
 
 ---
 
