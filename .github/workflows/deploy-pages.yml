@@ -42,11 +42,10 @@ jobs:
             exit 1
           fi
           npm run build:web
-          if grep -R "localhost:8787" dist/_expo dist/index.html 2>/dev/null; then
-            echo "localhost:8787 leaked into dist"
+          if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
+            echo "Public API URL was not inlined into the bundle (check static process.env access)"
             exit 1
           fi
-          grep -R "a9ade3f8a05951.lhr.life\|CHAT_API\|lhr.life\|trycloudflare\|railway\|onrender\|fly.dev" dist/_expo -l | head -5 || true
 
       - name: Disable Jekyll
         run: touch dist/.nojekyll
