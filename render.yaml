@@ -1,0 +1,23 @@
+# Free Render web service for Tailio chat API (+ consultant PWA)
+# Deploy: https://dashboard.render.com/select-repo?type=blueprint
+# Or: New → Blueprint → connect Evgeniy-makdak/tails
+services:
+  - type: web
+    name: tailio-chat
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: TAILIO_JWT_SECRET
+        generateValue: true
+      - key: TAILIO_JWT_TTL
+        value: 7d
+      # Free plan has NO persistent disk — chat history resets on redeploy/restart.
+      # For durable history later: upgrade or move to a VPS / paid disk.
