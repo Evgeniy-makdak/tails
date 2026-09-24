@@ -32,9 +32,9 @@ jobs:
       - name: Build web app
         env:
           EXPO_PUBLIC_CHAT_LIVE: '1'
-          # Public Tailio chat API (https://…). Set repo secret CHAT_API_URL for GitHub Pages.
-          # Without it the build still succeeds; chat will show a connection error until the secret is set.
-          EXPO_PUBLIC_API_URL: ${{ secrets.CHAT_API_URL }}
+          # Prefer repo secret CHAT_API_URL (stable host). Fallback: temporary HTTPS tunnel to local :8787
+          # (keep `npm run chat:server` + SSH tunnel alive while testing Pages from phones/other PCs).
+          EXPO_PUBLIC_API_URL: ${{ secrets.CHAT_API_URL != '' && secrets.CHAT_API_URL || 'https://561a9228fef7fa.lhr.life' }}
         run: npm run build:web
 
       - name: Disable Jekyll

@@ -152,10 +152,12 @@ Claim атомарный: обновление только если `status=wai
 
 ## Важно про деплой
 
-- **GitHub Pages** хостит только Expo web-клиент. Live-чат на Pages заработает только когда API доступен по публичному HTTPS/WSS и в сборке прописан `EXPO_PUBLIC_API_URL`.
-- В GitHub → Settings → Secrets and variables → Actions добавьте секрет **`CHAT_API_URL`** (стабильный публичный URL вашего `server`, например Railway/Fly). Workflow передаёт его в `EXPO_PUBLIC_API_URL` при `build:web`.
-- Пока секрета нет, на Pages откроется live-UI чата, но соединение упадёт (браузер не достучится до `localhost`). Для проверки «как в проде» нужен публичный API; для быстрой проверки — локально `:8081` + `:8787` + кабинет.
-- Локально / на стенде поднимайте `server` отдельно; кабинет можно отдавать тем же сервером из `server/public` после `npm run chat:consultant:build`.
+- **GitHub Pages** хостит только Expo web-клиент. Live-чат на Pages заработает только когда API доступен по публичному **HTTPS/WSS** и в сборке прописан `EXPO_PUBLIC_API_URL`. С HTTPS-страницы нельзя ходить на `http://localhost` (mixed content + чужое устройство ≠ ваш Mac) — отсюда `Failed to fetch`.
+- В GitHub → Settings → Secrets and variables → Actions задайте секрет **`CHAT_API_URL`** (стабильный хост: Railway/Fly). Пока секрета нет, workflow может временно печь URL туннеля из `deploy-pages.yml`.
+- Временный туннель (пример): при запущенном `npm run chat:server` выполнить  
+  `ssh -R 80:127.0.0.1:8787 nokey@localhost.run`  
+  и подставить выданный `https://….lhr.life` в секрет или в fallback workflow, затем пересобрать Pages.
+- Локально / на стенде поднимайте `server` отдельно; кабинет — из `server/public` после `npm run chat:consultant:build`.
 
 ---
 
