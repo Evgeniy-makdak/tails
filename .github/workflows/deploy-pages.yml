@@ -34,27 +34,26 @@ jobs:
         env:
           CHAT_API_URL: ${{ vars.CHAT_API_URL }}
         run: |
+          # Prefer repo Variable CHAT_API_URL. Fallback: temporary HTTPS tunnel to local :8787.
           if [ -n "$CHAT_API_URL" ] && ! echo "$CHAT_API_URL" | grep -q 'localhost'; then
-            echo "live=1" >> "$GITHUB_OUTPUT"
-            echo "url=$CHAT_API_URL" >> "$GITHUB_OUTPUT"
-            echo "Using public chat API: $CHAT_API_URL"
+            URL="$CHAT_API_URL"
           else
-            echo "live=0" >> "$GITHUB_OUTPUT"
-            echo "url=" >> "$GITHUB_OUTPUT"
-            echo "No CHAT_API_URL variable — Pages will ship demo chat (set Variable for live)."
+            URL="https://dffdc4110daf28.lhr.life"
           fi
+          echo "live=1" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Using public chat API: $URL"
 
       - name: Build web app
         env:
-          EXPO_PUBLIC_CHAT_LIVE: ${{ steps.chat.outputs.live }}
+          EXPO_PUBLIC_CHAT_LIVE: '1'
           EXPO_PUBLIC_API_URL: ${{ steps.chat.outputs.url }}
         run: |
+          echo "Building live chat → $EXPO_PUBLIC_API_URL"
           npm run build:web
-          if [ "$EXPO_PUBLIC_CHAT_LIVE" = "1" ]; then
-            if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
-              echo "::error::API URL was not inlined into the bundle"
-              exit 1
-            fi
+          if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
+            echo "::error::API URL was not inlined into the bundle"
+            exit 1
           fi
 
       - name: Disable Jekyll
