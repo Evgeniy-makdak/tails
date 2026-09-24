@@ -38,7 +38,7 @@ jobs:
           if [ -n "$CHAT_API_URL" ] && ! echo "$CHAT_API_URL" | grep -q 'localhost'; then
             URL="$CHAT_API_URL"
           else
-            URL="https://dffdc4110daf28.lhr.life"
+            URL="https://a25f363486d34e.lhr.life"
           fi
           echo "live=1" >> "$GITHUB_OUTPUT"
           echo "url=$URL" >> "$GITHUB_OUTPUT"

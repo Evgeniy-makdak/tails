@@ -152,13 +152,16 @@ Claim атомарный: обновление только если `status=wai
 
 ## Важно про деплой
 
-- **GitHub Pages** — только статический клиент. Live-чат с телефона требует публичный **HTTPS/WSS** API.
-- В репозитории: Settings → Secrets and variables → Actions → **Variables** → `CHAT_API_URL` = `https://…` вашего `server` (предпочтительно).
-- Пока Variable пуст, workflow временно печёт URL туннеля из `deploy-pages.yml`. На Mac должны быть запущены `npm run chat:server` и SSH-туннель:
+- **GitHub Pages** — только статический клиент. Live-чат с телефона требует **постоянный** публичный HTTPS/WSS API. Временные `*.lhr.life` туннели регулярно умирают → на телефоне снова `Load Failed` / `Failed to fetch`.
+- **Правильный путь:** задеплоить `server/` на Fly.io (`server/fly.toml`, `server/Dockerfile`):
   ```bash
-  ssh -R 80:127.0.0.1:8787 nokey@localhost.run -- --output json
+  cd server
+  flyctl auth login
+  flyctl volumes create tailio_data --region ams --size 1
+  flyctl deploy
   ```
-  Если туннель сменил URL — обновите Variable или fallback в workflow и пересоберите Pages.
+  Затем в GitHub → Settings → Variables задайте `CHAT_API_URL=https://tailio-chat.fly.dev` и пересоберите Pages.
+- Пока Variable пуст, workflow временно печёт URL туннеля из `deploy-pages.yml` (держите `npm run chat:server` + SSH-туннель живыми).
 - Кабинет локально: `npm run chat:consultant` (+ API `:8787`). Один пользователь = одна склейка истории.
 
 ---

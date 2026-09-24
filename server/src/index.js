@@ -44,9 +44,9 @@ if (fs.existsSync(consultantDist)) {
 const server = http.createServer(app);
 attachWebSocket(server);
 
-server.listen(PORT, () => {
-  console.log(`Tailio server listening on http://localhost:${PORT}`);
-  console.log(`WebSocket: ws://localhost:${PORT}/ws`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Tailio server listening on http://0.0.0.0:${PORT}`);
+  console.log(`WebSocket: ws://0.0.0.0:${PORT}/ws`);
 });
 
 function ensureSeedConsultant() {
