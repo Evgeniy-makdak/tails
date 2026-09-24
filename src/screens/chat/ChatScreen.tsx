@@ -227,7 +227,9 @@ export function ChatScreen({ navigation, route }: Props) {
           ? 'Ищем консультанта…'
           : liveEnabled && live.conversation?.status === 'active'
             ? 'Консультант на связи'
-            : null;
+            : liveEnabled && live.conversation?.status === 'closed'
+              ? 'Закрыт — напишите, чтобы возобновить'
+              : null;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>

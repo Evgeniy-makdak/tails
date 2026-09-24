@@ -32,10 +32,21 @@ jobs:
       - name: Build web app
         env:
           EXPO_PUBLIC_CHAT_LIVE: '1'
-          # Prefer repo secret CHAT_API_URL (stable host). Fallback: temporary HTTPS tunnel to local :8787
-          # (keep `npm run chat:server` + SSH tunnel alive while testing Pages from phones/other PCs).
-          EXPO_PUBLIC_API_URL: ${{ secrets.CHAT_API_URL != '' && secrets.CHAT_API_URL || 'https://561a9228fef7fa.lhr.life' }}
-        run: npm run build:web
+          # Public HTTPS API for Pages (must not be localhost — mixed content + remote devices).
+          # Prefer repo Variable CHAT_API_URL (Settings → Variables). Fallback = temporary tunnel.
+          EXPO_PUBLIC_API_URL: ${{ vars.CHAT_API_URL || 'https://a9ade3f8a05951.lhr.life' }}
+        run: |
+          echo "Building with API: $EXPO_PUBLIC_API_URL"
+          if echo "$EXPO_PUBLIC_API_URL" | grep -q 'localhost'; then
+            echo "Refusing to bake localhost API into Pages build"
+            exit 1
+          fi
+          npm run build:web
+          if grep -R "localhost:8787" dist/_expo dist/index.html 2>/dev/null; then
+            echo "localhost:8787 leaked into dist"
+            exit 1
+          fi
+          grep -R "a9ade3f8a05951.lhr.life\|CHAT_API\|lhr.life\|trycloudflare\|railway\|onrender\|fly.dev" dist/_expo -l | head -5 || true
 
       - name: Disable Jekyll
         run: touch dist/.nojekyll

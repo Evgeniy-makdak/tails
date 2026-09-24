@@ -81,17 +81,63 @@ export function listConsultantActive(consultantId) {
     .map(enrichConversation);
 }
 
+/** Closed dialogs this consultant handled — archive / history. */
+export function listConsultantHistory(consultantId, limit = 40) {
+  return findMany(
+    'conversations',
+    (c) => c.status === 'closed' && c.consultant_id === consultantId,
+  )
+    .sort((a, b) => (b.closed_at || b.updated_at).localeCompare(a.closed_at || a.updated_at))
+    .slice(0, limit)
+    .map(enrichConversation);
+}
+
+/**
+ * Reopen a closed conversation into the waiting queue, keeping message history.
+ * Clears claim so any consultant can take it again.
+ */
+export function reopenConversation(conversationId) {
+  const row = findById('conversations', conversationId);
+  if (!row || row.status !== 'closed') {
+    return { ok: false, reason: 'not_closed' };
+  }
+  const now = nowIso();
+  updateById('conversations', conversationId, {
+    status: 'waiting',
+    consultant_id: null,
+    claimed_at: null,
+    closed_at: null,
+    updated_at: now,
+  });
+  insertSystemMessage(conversationId, 'Пользователь возобновил обращение. Ожидаем консультанта…');
+  return { ok: true, conversation: getConversationById(conversationId) };
+}
+
 export function ensureUserConversation(userId, petId = null) {
   const open = findMany(
     'conversations',
     (c) => c.user_id === userId && (c.status === 'waiting' || c.status === 'active'),
-  ).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  ).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
 
   if (open) {
     if (petId && !open.pet_id) {
       updateById('conversations', open.id, { pet_id: petId, updated_at: nowIso() });
     }
     return getConversationById(open.id);
+  }
+
+  // Keep closed thread for history in the client; reopen only when the user sends again.
+  const closed = findMany(
+    'conversations',
+    (c) => c.user_id === userId && c.status === 'closed',
+  ).sort((a, b) => (b.closed_at || b.updated_at).localeCompare(a.closed_at || a.updated_at))[0];
+
+  if (closed) {
+    if (petId && !closed.pet_id) {
+      updateById('conversations', closed.id, { pet_id: petId, updated_at: nowIso() });
+      return getConversationById(closed.id);
+    }
+    return enrichConversation(closed);
   }
 
   const id = uuid();

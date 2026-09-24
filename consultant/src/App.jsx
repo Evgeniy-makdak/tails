@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { createChatSocket } from './socket.js';
 
@@ -27,6 +27,7 @@ export default function App() {
   const [status, setStatus] = useState('offline');
   const [waiting, setWaiting] = useState([]);
   const [active, setActive] = useState([]);
+  const [history, setHistory] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -52,6 +53,14 @@ export default function App() {
     setTimeout(() => setToast(''), 2800);
   };
 
+  const clearWorkspace = () => {
+    setConversation(null);
+    setMessages([]);
+    setSelectedId(null);
+    setPeerTyping(false);
+    setDraft('');
+  };
+
   const logout = () => {
     socketRef.current?.close();
     socketRef.current = null;
@@ -60,9 +69,8 @@ export default function App() {
     setSession(null);
     setWaiting([]);
     setActive([]);
-    setConversation(null);
-    setMessages([]);
-    setSelectedId(null);
+    setHistory([]);
+    clearWorkspace();
   };
 
   const persistSession = (token, profile) => {
@@ -125,6 +133,9 @@ export default function App() {
           case 'active.updated':
             setActive(msg.active || []);
             break;
+          case 'history.updated':
+            setHistory(msg.history || []);
+            break;
           case 'conversation.claimed':
           case 'conversation.snapshot':
             setConversation(msg.conversation);
@@ -136,9 +147,7 @@ export default function App() {
             setWaiting((prev) => prev.filter((c) => c.id !== msg.conversationId));
             if (selectedIdRef.current === msg.conversationId) {
               showToast('Диалог уже забрал другой консультант');
-              setConversation(null);
-              setMessages([]);
-              setSelectedId(null);
+              clearWorkspace();
             }
             break;
           case 'message.new': {
@@ -160,9 +169,9 @@ export default function App() {
             }
             break;
           case 'conversation.closed':
-            if (msg.conversation?.id === conversation?.id) {
-              setConversation(msg.conversation);
-              showToast('Диалог закрыт');
+            if (msg.conversation?.id === (conversationRef.current?.id || selectedIdRef.current)) {
+              showToast('Диалог закрыт и перенесён в историю');
+              clearWorkspace();
             }
             break;
           case 'error':
@@ -187,7 +196,7 @@ export default function App() {
     socketRef.current?.send({ type: 'conversation.claim', conversationId: id });
   };
 
-  const openActive = (id) => {
+  const openConversation = (id) => {
     setSelectedId(id);
     socketRef.current?.send({ type: 'conversation.open', conversationId: id });
   };
@@ -211,7 +220,7 @@ export default function App() {
 
   const onDraftChange = (value) => {
     setDraft(value);
-    if (!conversation?.id) return;
+    if (!conversation?.id || conversation.status === 'closed') return;
     socketRef.current?.send({
       type: 'typing',
       conversationId: conversation.id,
@@ -228,14 +237,9 @@ export default function App() {
   };
 
   const closeDialog = () => {
-    if (!conversation?.id) return;
+    if (!conversation?.id || conversation.status !== 'active') return;
     socketRef.current?.send({ type: 'conversation.close', conversationId: conversation.id });
   };
-
-  const selectedActive = useMemo(
-    () => active.find((c) => c.id === selectedId) || conversation,
-    [active, selectedId, conversation],
-  );
 
   if (!session) {
     return (
@@ -305,6 +309,8 @@ export default function App() {
     );
   }
 
+  const isArchivedView = conversation?.status === 'closed';
+
   return (
     <div className="desk">
       <header className="topbar">
@@ -347,10 +353,30 @@ export default function App() {
                   key={item.id}
                   type="button"
                   className={`dialog-card ${selectedId === item.id ? 'selected' : ''}`}
-                  onClick={() => openActive(item.id)}
+                  onClick={() => openConversation(item.id)}
                 >
                   <div className="dialog-title">{item.userName || item.userEmail}</div>
                   <div className="dialog-sub">{item.petName || 'Без питомца'}</div>
+                  <div className="dialog-preview">{item.preview || ''}</div>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h2>История ({history.length})</h2>
+            <div className="list">
+              {history.length === 0 ? <div className="empty">Закрытых диалогов пока нет</div> : null}
+              {history.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`dialog-card archived ${selectedId === item.id ? 'selected' : ''}`}
+                  onClick={() => openConversation(item.id)}
+                >
+                  <div className="dialog-title">{item.userName || item.userEmail}</div>
+                  <div className="dialog-sub">
+                    {item.petName || 'Без питомца'} · архив
+                  </div>
                   <div className="dialog-preview">{item.preview || ''}</div>
                 </button>
               ))}
@@ -362,7 +388,7 @@ export default function App() {
           {!conversation ? (
             <div className="chat-empty">
               <h2>Выберите диалог</h2>
-              <p>Заберите обращение из очереди или откройте активный чат слева.</p>
+              <p>Заберите обращение из очереди или откройте активный чат / историю слева.</p>
             </div>
           ) : (
             <>
@@ -375,7 +401,7 @@ export default function App() {
                       ? 'Активный диалог'
                       : conversation.status === 'waiting'
                         ? 'Ожидает'
-                        : 'Закрыт'}
+                        : 'Архив (только просмотр)'}
                     {peerTyping ? ' · печатает…' : ''}
                   </p>
                 </div>
@@ -404,11 +430,13 @@ export default function App() {
                   value={draft}
                   onChange={(e) => onDraftChange(e.target.value)}
                   placeholder={
-                    conversation.status === 'closed' ? 'Диалог закрыт' : 'Напишите ответ…'
+                    isArchivedView
+                      ? 'Архивный диалог — только просмотр'
+                      : 'Напишите ответ…'
                   }
-                  disabled={conversation.status === 'closed'}
+                  disabled={isArchivedView}
                 />
-                <button className="primary" type="submit" disabled={conversation.status === 'closed'}>
+                <button className="primary" type="submit" disabled={isArchivedView}>
                   Отправить
                 </button>
               </form>
@@ -418,7 +446,6 @@ export default function App() {
       </div>
 
       {toast ? <div className="toast">{toast}</div> : null}
-      {selectedActive ? null : null}
     </div>
   );
 }

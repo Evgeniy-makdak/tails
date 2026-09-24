@@ -9,7 +9,9 @@ import {
   getMessages,
   insertMessage,
   listConsultantActive,
+  listConsultantHistory,
   listWaitingQueue,
+  reopenConversation,
 } from './chatService.js';
 
 function send(ws, type, payload = {}) {
@@ -53,6 +55,15 @@ export function attachWebSocket(server) {
     );
   }
 
+  function publishHistoryForConsultant(consultantId) {
+    const history = listConsultantHistory(consultantId);
+    broadcast(
+      (auth) => auth.role === 'consultant' && auth.id === consultantId,
+      'history.updated',
+      { history },
+    );
+  }
+
   wss.on('connection', (ws, req) => {
     const url = new URL(req.url || '', 'http://localhost');
     const token = url.searchParams.get('token');
@@ -81,6 +92,7 @@ export function attachWebSocket(server) {
     if (ws.auth.role === 'consultant') {
       send(ws, 'queue.updated', { waiting: listWaitingQueue() });
       send(ws, 'active.updated', { active: listConsultantActive(ws.auth.id) });
+      send(ws, 'history.updated', { history: listConsultantHistory(ws.auth.id) });
     }
 
     ws.on('message', (raw) => {
@@ -95,6 +107,7 @@ export function attachWebSocket(server) {
           broadcast,
           publishQueue,
           publishActiveForConsultant,
+          publishHistoryForConsultant,
         });
       } catch (error) {
         send(ws, 'error', {
@@ -113,7 +126,8 @@ export function attachWebSocket(server) {
 }
 
 function handleMessage(ws, msg, helpers) {
-  const { broadcast, publishQueue, publishActiveForConsultant } = helpers;
+  const { broadcast, publishQueue, publishActiveForConsultant, publishHistoryForConsultant } =
+    helpers;
   const auth = ws.auth;
 
   switch (msg.type) {
@@ -125,7 +139,9 @@ function handleMessage(ws, msg, helpers) {
       const conversation = ensureUserConversation(auth.id, msg.petId || null);
       const messages = getMessages(conversation.id);
       send(ws, 'conversation.snapshot', { conversation, messages });
-      publishQueue();
+      if (conversation.status === 'waiting') {
+        publishQueue();
+      }
       return;
     }
 
@@ -136,6 +152,7 @@ function handleMessage(ws, msg, helpers) {
       }
       send(ws, 'queue.updated', { waiting: listWaitingQueue() });
       send(ws, 'active.updated', { active: listConsultantActive(auth.id) });
+      send(ws, 'history.updated', { history: listConsultantHistory(auth.id) });
       return;
     }
 
@@ -168,6 +185,7 @@ function handleMessage(ws, msg, helpers) {
       );
       publishQueue();
       publishActiveForConsultant(auth.id);
+      publishHistoryForConsultant(auth.id);
       // Push latest system message to user
       const last = messages[messages.length - 1];
       if (last) {
@@ -183,7 +201,7 @@ function handleMessage(ws, msg, helpers) {
     }
 
     case 'conversation.open': {
-      // Consultant opens an already-claimed active chat
+      // Consultant opens an already-claimed active chat or archived history
       if (auth.role !== 'consultant') {
         send(ws, 'error', { code: 'forbidden' });
         return;
@@ -206,8 +224,37 @@ function handleMessage(ws, msg, helpers) {
         send(ws, 'error', { code: 'empty_message' });
         return;
       }
-      const conversation = getConversationById(msg.conversationId);
-      if (!conversation || conversation.status === 'closed') {
+      let conversation = getConversationById(msg.conversationId);
+      if (!conversation) {
+        send(ws, 'error', { code: 'not_found' });
+        return;
+      }
+
+      // User resume: closed → waiting queue with full history preserved
+      if (conversation.status === 'closed' && auth.role === 'user') {
+        if (conversation.userId !== auth.id) {
+          send(ws, 'error', { code: 'forbidden' });
+          return;
+        }
+        const prevConsultantId = conversation.consultantId;
+        const reopened = reopenConversation(conversation.id);
+        if (!reopened.ok) {
+          send(ws, 'error', { code: reopened.reason || 'reopen_failed' });
+          return;
+        }
+        conversation = reopened.conversation;
+        send(ws, 'conversation.snapshot', {
+          conversation,
+          messages: getMessages(conversation.id),
+        });
+        publishQueue();
+        if (prevConsultantId) {
+          publishHistoryForConsultant(prevConsultantId);
+          publishActiveForConsultant(prevConsultantId);
+        }
+      }
+
+      if (conversation.status === 'closed') {
         send(ws, 'error', { code: 'conversation_closed' });
         return;
       }
@@ -249,10 +296,6 @@ function handleMessage(ws, msg, helpers) {
         return false;
       }, 'message.new', { message });
 
-      if (auth.role === 'user' && conversation.status === 'waiting') {
-        // User still needs to see their own message (broadcast includes them)
-      }
-
       if (conversation.consultantId) {
         publishActiveForConsultant(conversation.consultantId);
       }
@@ -285,21 +328,23 @@ function handleMessage(ws, msg, helpers) {
       }
       const messages = getMessages(result.conversation.id);
       const last = messages[messages.length - 1];
+      const consultantId = result.conversation.consultantId;
       broadcast((a) => {
         if (a.role === 'user' && a.id === result.conversation.userId) return true;
-        if (a.role === 'consultant' && a.id === result.conversation.consultantId) return true;
+        if (a.role === 'consultant' && a.id === consultantId) return true;
         return false;
       }, 'conversation.closed', { conversation: result.conversation });
       if (last) {
         broadcast((a) => {
           if (a.role === 'user' && a.id === result.conversation.userId) return true;
-          if (a.role === 'consultant' && a.id === result.conversation.consultantId) return true;
+          if (a.role === 'consultant' && a.id === consultantId) return true;
           return false;
         }, 'message.new', { message: last });
       }
       publishQueue();
-      if (result.conversation.consultantId) {
-        publishActiveForConsultant(result.conversation.consultantId);
+      if (consultantId) {
+        publishActiveForConsultant(consultantId);
+        publishHistoryForConsultant(consultantId);
       }
       return;
     }
