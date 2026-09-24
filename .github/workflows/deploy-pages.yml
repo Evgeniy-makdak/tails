@@ -34,11 +34,11 @@ jobs:
         env:
           CHAT_API_URL: ${{ vars.CHAT_API_URL }}
         run: |
-          # Prefer repo Variable CHAT_API_URL. Fallback: temporary HTTPS tunnel to local :8787.
+          # Prefer repo Variable CHAT_API_URL. Fallback: Render Free production API.
           if [ -n "$CHAT_API_URL" ] && ! echo "$CHAT_API_URL" | grep -q 'localhost'; then
             URL="$CHAT_API_URL"
           else
-            URL="https://ee8f13906036ea.lhr.life"
+            URL="https://tailio-chat.onrender.com"
           fi
           echo "live=1" >> "$GITHUB_OUTPUT"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
