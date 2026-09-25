@@ -27,6 +27,14 @@ export type MapPolyline = {
   width?: number;
 };
 
+export type MapPolygon = {
+  id: string;
+  /** Ring without mandatory closing point (lon/lat order handled downstream). */
+  ring: MapLatLng[];
+  color: string;
+  strokeColor?: string;
+};
+
 export type MapCamera = {
   center: MapLatLng;
   zoom: number;
@@ -37,6 +45,7 @@ export type MapCanvasProps = {
   markers?: MapMarker[];
   circles?: MapCircle[];
   polylines?: MapPolyline[];
+  polygons?: MapPolygon[];
   /**
    * Bump to force camera back to `camera.center` + zoom (clears “user panned” lock).
    * Used by the recenter control.

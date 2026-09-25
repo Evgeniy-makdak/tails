@@ -5,11 +5,20 @@ import { careTasks, deviceOff, notifications, pets, reminders } from './mock';
 export const DEMO_EMAIL = 'demo@tailio.app';
 export const DEMO_OTP = '111111';
 
+export type GeoZoneBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
 export type GeoZone = {
   id: string;
   title: string;
   address: string;
   kind: 'safe' | 'danger';
+  /** Axis-aligned geofence on the real map. Optional for legacy zones. */
+  bounds?: GeoZoneBounds;
 };
 
 export type WalkEntry = {

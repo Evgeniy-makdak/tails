@@ -79,6 +79,26 @@ function buildHtml(styleUrl: string) {
       };
     }
 
+    function polygonsToFC(polygons) {
+      return {
+        type: 'FeatureCollection',
+        features: (polygons || []).map((poly) => {
+          const ring = (poly.ring || []).map((c) => [c.longitude, c.latitude]);
+          if (ring.length && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])) {
+            ring.push(ring[0].slice());
+          }
+          return {
+            type: 'Feature',
+            properties: {
+              color: poly.color,
+              strokeColor: poly.strokeColor || poly.color
+            },
+            geometry: { type: 'Polygon', coordinates: [ring] }
+          };
+        })
+      };
+    }
+
     function linesToFC(polylines) {
       return {
         type: 'FeatureCollection',
@@ -144,7 +164,10 @@ function buildHtml(styleUrl: string) {
         map.easeTo({ center: [center.longitude, center.latitude], zoom: zoom, duration: 500 });
       }
 
-      map.getSource(CIRCLES_SOURCE).setData(circlesToFC(scene.circles));
+      map.getSource(CIRCLES_SOURCE).setData({
+        type: 'FeatureCollection',
+        features: circlesToFC(scene.circles).features.concat(polygonsToFC(scene.polygons).features)
+      });
       map.getSource(LINES_SOURCE).setData(linesToFC(scene.polylines));
       syncMarkers(scene.markers);
     }
@@ -183,6 +206,7 @@ export function MapLibreCanvas({
   markers = [],
   circles = [],
   polylines = [],
+  polygons = [],
   followKey = 0,
   children,
   style,
@@ -198,9 +222,10 @@ export function MapLibreCanvas({
       markers,
       circles,
       polylines,
+      polygons,
       followKey,
     }),
-    [camera, markers, circles, polylines, followKey],
+    [camera, markers, circles, polylines, polygons, followKey],
   );
 
   const pushScene = () => {

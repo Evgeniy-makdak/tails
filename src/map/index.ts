@@ -1,13 +1,20 @@
 export { mapConfig } from './config';
 export { DemoMapSurface } from './DemoMapSurface';
 export {
+  boundsCenter,
+  boundsHalfSideM,
+  boundsToPolygon,
   buildAllowedZoneCircle,
   buildApproachPolyline,
   buildForbiddenZoneCircle,
   circleToGeoJSON,
+  metersPerPixel,
   offsetPoint,
+  pointInBounds,
+  squareBoundsFromCenter,
 } from './geofence';
 export { MapCanvas } from './MapCanvas';
+export { ZoneResizeOverlay } from './ZoneResizeOverlay';
 export {
   buildRasterStyle,
   CARTO_POSITRON_TILES,
@@ -23,5 +30,6 @@ export type {
   MapCircle,
   MapLatLng,
   MapMarker,
+  MapPolygon,
   MapPolyline,
 } from './types';

@@ -34,7 +34,15 @@ export type AppStackParamList = {
   Documents: undefined;
   Geozones: undefined;
   DrawZone: { kind?: 'safe' | 'danger' };
-  CreatePlace: { kind?: 'safe' | 'danger' };
+  CreatePlace: {
+    kind?: 'safe' | 'danger';
+    bounds?: {
+      north: number;
+      south: number;
+      east: number;
+      west: number;
+    };
+  };
   WalkHistory: undefined;
   PetCard: { petId: string };
 };

@@ -1,4 +1,5 @@
-import type { MapCircle, MapLatLng, MapPolyline } from './types';
+import type { GeoZoneBounds } from '../data/auth';
+import type { MapCircle, MapLatLng, MapPolygon, MapPolyline } from './types';
 
 const EARTH_RADIUS_M = 6371008.8;
 
@@ -20,6 +21,103 @@ export function offsetPoint(start: MapLatLng, distanceM: number, bearingDeg: num
   return {
     latitude: (φ2 * 180) / Math.PI,
     longitude: (((λ2 * 180) / Math.PI + 540) % 360) - 180,
+  };
+}
+
+/** Approximate meters-per-pixel at a latitude and zoom (WebMercator). */
+export function metersPerPixel(latitude: number, zoom: number): number {
+  return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
+}
+
+/** Square geofence: halfSideM from center to each side. */
+export function squareBoundsFromCenter(center: MapLatLng, halfSideM: number): GeoZoneBounds {
+  const north = offsetPoint(center, halfSideM, 0).latitude;
+  const south = offsetPoint(center, halfSideM, 180).latitude;
+  const east = offsetPoint(center, halfSideM, 90).longitude;
+  const west = offsetPoint(center, halfSideM, 270).longitude;
+  return { north, south, east, west };
+}
+
+export function boundsCenter(bounds: GeoZoneBounds): MapLatLng {
+  return {
+    latitude: (bounds.north + bounds.south) / 2,
+    longitude: (bounds.east + bounds.west) / 2,
+  };
+}
+
+/** Half of the north–south extent in meters (approx). */
+export function boundsHalfSideM(bounds: GeoZoneBounds): number {
+  const center = boundsCenter(bounds);
+  const north = { latitude: bounds.north, longitude: center.longitude };
+  return haversineM(center, north);
+}
+
+export function haversineM(a: MapLatLng, b: MapLatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function pointInBounds(point: MapLatLng, bounds: GeoZoneBounds): boolean {
+  const minLng = Math.min(bounds.west, bounds.east);
+  const maxLng = Math.max(bounds.west, bounds.east);
+  return (
+    point.latitude <= bounds.north &&
+    point.latitude >= bounds.south &&
+    point.longitude >= minLng &&
+    point.longitude <= maxLng
+  );
+}
+
+/** Positive = outside (meters to nearest edge); negative = inside. */
+export function signedDistanceOutsideBoundsM(point: MapLatLng, bounds: GeoZoneBounds): number {
+  const minLng = Math.min(bounds.west, bounds.east);
+  const maxLng = Math.max(bounds.west, bounds.east);
+
+  if (pointInBounds(point, bounds)) {
+    const toNorth = haversineM(point, { latitude: bounds.north, longitude: point.longitude });
+    const toSouth = haversineM(point, { latitude: bounds.south, longitude: point.longitude });
+    const toEast = haversineM(point, { latitude: point.latitude, longitude: maxLng });
+    const toWest = haversineM(point, { latitude: point.latitude, longitude: minLng });
+    return -Math.min(toNorth, toSouth, toEast, toWest);
+  }
+
+  const clamped: MapLatLng = {
+    latitude: Math.min(bounds.north, Math.max(bounds.south, point.latitude)),
+    longitude: Math.min(maxLng, Math.max(minLng, point.longitude)),
+  };
+  return haversineM(point, clamped);
+}
+
+export function boundsToPolygon(
+  bounds: GeoZoneBounds,
+  id: string,
+  kind: 'safe' | 'danger',
+): MapPolygon {
+  const ring: MapLatLng[] = [
+    { latitude: bounds.north, longitude: bounds.west },
+    { latitude: bounds.north, longitude: bounds.east },
+    { latitude: bounds.south, longitude: bounds.east },
+    { latitude: bounds.south, longitude: bounds.west },
+  ];
+  if (kind === 'safe') {
+    return {
+      id,
+      ring,
+      color: 'rgba(31,157,85,0.22)',
+      strokeColor: 'rgba(31,157,85,0.7)',
+    };
+  }
+  return {
+    id,
+    ring,
+    color: 'rgba(226,75,74,0.22)',
+    strokeColor: 'rgba(226,75,74,0.75)',
   };
 }
 
@@ -55,7 +153,6 @@ export function lineToGeoJSON(coordinates: MapLatLng[]) {
   };
 }
 
-/** Default “allowed” geofence around pet — ready for real zones from API later. */
 export function buildAllowedZoneCircle(
   center: MapLatLng,
   radiusM = 120,
@@ -84,7 +181,6 @@ export function buildForbiddenZoneCircle(
   };
 }
 
-/** Short demo trail ending at pet — placeholder until collar path history arrives. */
 export function buildApproachPolyline(center: MapLatLng, id = 'track-demo'): MapPolyline {
   const start = offsetPoint(center, 45, 210);
   const mid = offsetPoint(center, 22, 200);

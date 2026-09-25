@@ -8,3 +8,4 @@ export type {
   PetGeoPoint,
 } from './types';
 export { useCollarLocation } from './useCollarLocation';
+export { useGeofenceAlerts } from './useGeofenceAlerts';

@@ -1,4 +1,4 @@
-import type { MapLatLng, MapMarker, MapCircle, MapPolyline, MapCamera } from './types';
+import type { MapCamera, MapCircle, MapLatLng, MapMarker, MapPolygon, MapPolyline } from './types';
 
 /** Serializable snapshot pushed into MapLibre (web DOM or native WebView). */
 export type MapScene = {
@@ -6,6 +6,7 @@ export type MapScene = {
   markers: MapMarker[];
   circles: MapCircle[];
   polylines: MapPolyline[];
+  polygons: MapPolygon[];
   follow: boolean;
 };
 
@@ -20,7 +21,6 @@ export function lonLat(c: MapLatLng): [number, number] {
 }
 
 export function circlesToFeatureCollection(circles: MapCircle[]) {
-  // Inline circle ring builder to keep this module free of heavy imports in WebView HTML.
   const EARTH = 6371008.8;
   const features = circles.map((circle) => {
     const steps = 64;
@@ -53,6 +53,43 @@ export function circlesToFeatureCollection(circles: MapCircle[]) {
     };
   });
   return { type: 'FeatureCollection' as const, features };
+}
+
+export function polygonsToFeatureCollection(polygons: MapPolygon[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: polygons.map((poly) => {
+      const ring = poly.ring.map(lonLat);
+      const first = ring[0];
+      const last = ring[ring.length - 1];
+      if (
+        first &&
+        last &&
+        (first[0] !== last[0] || first[1] !== last[1])
+      ) {
+        ring.push([first[0], first[1]]);
+      }
+      return {
+        type: 'Feature' as const,
+        id: poly.id,
+        properties: {
+          id: poly.id,
+          color: poly.color,
+          strokeColor: poly.strokeColor || poly.color,
+        },
+        geometry: { type: 'Polygon' as const, coordinates: [ring] },
+      };
+    }),
+  };
+}
+
+export function mergeFeatureCollections(
+  ...collections: { type: 'FeatureCollection'; features: readonly unknown[] }[]
+) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: collections.flatMap((c) => [...c.features]),
+  };
 }
 
 export function polylinesToFeatureCollection(polylines: MapPolyline[]) {

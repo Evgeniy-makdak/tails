@@ -15,6 +15,7 @@ import { MAP_ENGINE } from '../../config/features';
 import { useCollarLocation } from '../../location';
 import {
   MapCanvas,
+  boundsToPolygon,
   buildAllowedZoneCircle,
   buildApproachPolyline,
   mapConfig,
@@ -22,6 +23,7 @@ import {
   type MapCamera,
   type MapCircle,
   type MapMarker,
+  type MapPolygon,
   type MapPolyline,
 } from '../../map';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
@@ -50,6 +52,7 @@ export function MapScreen() {
   const navigation = useNavigation<MapNav>();
   const pet = useActivePet();
   const updatePet = useAppStore((state) => state.updatePet);
+  const geozones = useAppStore((state) => state.geozones);
   const { coordsLabel, point, source } = useCollarLocation({
     petId: pet.id,
     collarId: pet.collarId,
@@ -93,8 +96,17 @@ export function MapScreen() {
 
   const circles = useMemo<MapCircle[]>(() => {
     if (sosActive) return [];
+    const hasSaved = geozones.some((z) => z.bounds);
+    if (hasSaved) return [];
     return [buildAllowedZoneCircle(center, 120, 'zone-allowed')];
-  }, [center, sosActive]);
+  }, [center, sosActive, geozones]);
+
+  const polygons = useMemo<MapPolygon[]>(() => {
+    if (sosActive) return [];
+    return geozones
+      .filter((z) => z.bounds)
+      .map((z) => boundsToPolygon(z.bounds!, z.id, z.kind));
+  }, [geozones, sosActive]);
 
   const polylines = useMemo<MapPolyline[]>(() => {
     if (!sosActive) return [];
@@ -238,6 +250,7 @@ export function MapScreen() {
         camera={camera}
         markers={LIVE_MAP ? markers : undefined}
         circles={LIVE_MAP ? circles : undefined}
+        polygons={LIVE_MAP ? polygons : undefined}
         polylines={LIVE_MAP ? polylines : undefined}
         followKey={followKey}
       >

@@ -13,6 +13,8 @@ import {
   LINES_SOURCE,
   circlesToFeatureCollection,
   markerColor,
+  mergeFeatureCollections,
+  polygonsToFeatureCollection,
   polylinesToFeatureCollection,
 } from '../scene';
 import { DEFAULT_MAP_STYLE_URL } from '../tiles';
@@ -110,6 +112,7 @@ export function MapLibreCanvas({
   markers = [],
   circles = [],
   polylines = [],
+  polygons = [],
   followKey = 0,
   children,
   style,
@@ -124,8 +127,18 @@ export function MapLibreCanvas({
 
   const center = camera?.center ?? mapConfig.defaultCamera.center;
   const zoom = camera?.zoom ?? mapConfig.defaultCamera.zoom;
-  const sceneRef = useRef({ markers, circles, polylines, center, zoom });
-  sceneRef.current = { markers, circles, polylines, center, zoom };
+  const sceneRef = useRef({ markers, circles, polylines, polygons, center, zoom });
+  sceneRef.current = { markers, circles, polylines, polygons, center, zoom };
+
+  const pushFillLayers = (map: maplibregl.Map, nextCircles = circles, nextPolygons = polygons) => {
+    const circleSource = map.getSource(CIRCLES_SOURCE) as maplibregl.GeoJSONSource | undefined;
+    circleSource?.setData(
+      mergeFeatureCollections(
+        circlesToFeatureCollection(nextCircles),
+        polygonsToFeatureCollection(nextPolygons),
+      ) as never,
+    );
+  };
 
   useEffect(() => {
     const node = containerRef.current;
@@ -150,8 +163,7 @@ export function MapLibreCanvas({
       ensureOverlayLayers(map);
       readyRef.current = true;
       const scene = sceneRef.current;
-      const circleSource = map.getSource(CIRCLES_SOURCE) as maplibregl.GeoJSONSource | undefined;
-      circleSource?.setData(circlesToFeatureCollection(scene.circles));
+      pushFillLayers(map, scene.circles, scene.polygons);
       const lineSource = map.getSource(LINES_SOURCE) as maplibregl.GeoJSONSource | undefined;
       lineSource?.setData(polylinesToFeatureCollection(scene.polylines));
       syncMarkers(map, scene.markers, markersRef.current);
@@ -208,9 +220,8 @@ export function MapLibreCanvas({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    const circleSource = map.getSource(CIRCLES_SOURCE) as maplibregl.GeoJSONSource | undefined;
-    circleSource?.setData(circlesToFeatureCollection(circles));
-  }, [circles]);
+    pushFillLayers(map, circles, polygons);
+  }, [circles, polygons]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -18,6 +18,7 @@ import {
   NotificationsScreen,
   ReminderDetailScreen,
 } from '../screens/details/DetailScreens';
+import { useGeofenceAlerts } from '../location';
 import { useAppStore } from '../store/useAppStore';
 import { colors } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
@@ -41,6 +42,8 @@ const navTheme = {
 export function RootNavigator() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const [hydrated, setHydrated] = useState(() => useAppStore.persist.hasHydrated());
+
+  useGeofenceAlerts(isAuthenticated);
 
   useEffect(() => {
     if (useAppStore.persist.hasHydrated()) {

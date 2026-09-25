@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import type { GeoZoneBounds } from '../../data/auth';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'CreatePlace'>;
 export function CreatePlaceScreen({ navigation, route }: Props) {
   const addGeozone = useAppStore((state) => state.addGeozone);
   const kind = route.params?.kind ?? 'safe';
+  const bounds = route.params?.bounds as GeoZoneBounds | undefined;
   const [name, setName] = useState(kind === 'safe' ? 'Дом' : 'Парковка');
   const [address, setAddress] = useState('ул. Пушкина, д. 15');
   const ready = name.trim().length > 0 && address.trim().length > 0;
@@ -42,13 +44,27 @@ export function CreatePlaceScreen({ navigation, route }: Props) {
           onChangeText={setAddress}
           style={{ backgroundColor: colors.bg, borderWidth: 0 }}
         />
+        {bounds ? (
+          <Text style={styles.meta}>
+            Зона на карте сохранена ({kind === 'safe' ? 'безопасная' : 'опасная'})
+          </Text>
+        ) : (
+          <Text style={styles.meta}>
+            Без координат на карте сигнализация работать не будет — вернитесь и задайте размер зоны.
+          </Text>
+        )}
       </View>
       <View style={styles.footer}>
         <Button
           label="Сохранить"
           disabled={!ready}
           onPress={() => {
-            addGeozone({ title: name.trim(), address: address.trim(), kind });
+            addGeozone({
+              title: name.trim(),
+              address: address.trim(),
+              kind,
+              bounds,
+            });
             navigation.navigate('Geozones');
           }}
         />
@@ -83,6 +99,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.xl,
     gap: 14,
+  },
+  meta: {
+    ...type.caption,
+    color: colors.inkSoft,
   },
   footer: {
     paddingHorizontal: spacing.xl,
