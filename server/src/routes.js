@@ -10,6 +10,12 @@ import {
 } from './auth.js';
 import { listConsultantActive, listWaitingQueue, upsertAppUser } from './chatService.js';
 import { findById, findOne, insert, nowIso } from './db.js';
+import {
+  createTrack,
+  ensureDemoTracks,
+  getTrackById,
+  listTracksForUser,
+} from './trackService.js';
 
 export function createApiRouter() {
   const router = Router();
@@ -156,6 +162,58 @@ export function createApiRouter() {
       waiting: listWaitingQueue(),
       active: listConsultantActive(req.auth.id),
     });
+  });
+
+  /** List GPS tracks / walks for the signed-in app user (pet history). */
+  router.get('/tracks', authMiddleware, requireRole('user'), (req, res) => {
+    const petId = req.query.petId ? String(req.query.petId) : undefined;
+    const seed = req.query.seed !== '0';
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const center =
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? { latitude: lat, longitude: lng }
+        : { latitude: 59.9362, longitude: 30.3141 };
+
+    let tracks = listTracksForUser(req.auth.id, { petId });
+    if (seed && tracks.length === 0) {
+      tracks = ensureDemoTracks(req.auth.id, {
+        petId,
+        petName: req.query.petName ? String(req.query.petName) : undefined,
+        center,
+      });
+    }
+    res.json({ tracks });
+  });
+
+  router.get('/tracks/:id', authMiddleware, requireRole('user'), (req, res) => {
+    const track = getTrackById(req.params.id);
+    if (!track || track.userId !== req.auth.id) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json({ track });
+  });
+
+  /** Collar / client upload of a finished track (points required). */
+  router.post('/tracks', authMiddleware, requireRole('user'), (req, res) => {
+    try {
+      const track = createTrack({
+        userId: req.auth.id,
+        petId: req.body?.petId,
+        petName: req.body?.petName,
+        points: req.body?.points,
+        startedAt: req.body?.startedAt,
+        endedAt: req.body?.endedAt,
+        steps: req.body?.steps,
+        source: req.body?.source || 'api',
+      });
+      res.status(201).json({ track });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'create_failed',
+      });
+    }
   });
 
   return router;

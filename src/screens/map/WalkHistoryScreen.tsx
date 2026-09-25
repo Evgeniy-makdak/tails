@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PetAvatar } from '../../components/pet/PetAvatar';
+import type { PetTrack } from '../../api/tracks';
 import { InAppSheet } from '../../components/ui/InAppSheet';
-import { useActivePet, useAppStore } from '../../store/useAppStore';
+import { MAP_ENGINE } from '../../config/features';
+import { useCollarLocation, usePetTracks } from '../../location';
+import { MapCanvas, mapConfig, type MapCamera, type MapMarker, type MapPolyline } from '../../map';
+import { useActivePet } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 
@@ -16,6 +19,7 @@ type TabId = 'location' | 'timeline';
 type RangeId = '1h' | '3h' | '6h' | '12h' | '24h';
 
 const RANGES: RangeId[] = ['1h', '3h', '6h', '12h', '24h'];
+const LIVE_MAP = MAP_ENGINE === 'maplibre';
 
 function rangeToProgress(range: RangeId): number {
   const index = RANGES.indexOf(range);
@@ -28,7 +32,25 @@ function progressToRange(progress: number): RangeId {
   return RANGES[index] ?? '24h';
 }
 
-/** Same responder pattern as SensitivitySlider — reliable on web/PWA touch. */
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatKm(meters: number): string {
+  return `${(meters / 1000).toFixed(1)} км`;
+}
+
+function formatMinutes(sec: number): string {
+  return `${Math.max(1, Math.round(sec / 60))} мин`;
+}
+
 function RangeSlider({ value, onChange }: { value: number; onChange: (next: number) => void }) {
   const [width, setWidth] = useState(1);
   const clamp = (x: number) => Math.max(0, Math.min(1, x / Math.max(width, 1)));
@@ -71,29 +93,59 @@ const TIMELINE = [
   },
 ];
 
+function trackCamera(track: PetTrack | undefined): MapCamera {
+  const pts = track?.points ?? [];
+  if (pts.length === 0) return mapConfig.defaultCamera;
+  const mid = pts[Math.floor(pts.length / 2)] ?? pts[0]!;
+  return { center: { latitude: mid.latitude, longitude: mid.longitude }, zoom: 14.5 };
+}
+
 export function WalkHistoryScreen({ navigation }: Props) {
   const pet = useActivePet();
-  const walks = useAppStore((state) => state.walks);
-  const addWalk = useAppStore((state) => state.addWalk);
+  const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
+  const { tracks, loading, source, reload } = usePetTracks({
+    petId: pet.id,
+    petName: pet.name,
+    center: point,
+  });
+
   const [tab, setTab] = useState<TabId>('location');
   const [range, setRange] = useState<RangeId>('24h');
   const [sliderProgress, setSliderProgress] = useState(rangeToProgress('24h'));
-  const [selectedWalk, setSelectedWalk] = useState<string | null>(null);
+  const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
+  const [sheetWalkId, setSheetWalkId] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(0);
+  const [followKey, setFollowKey] = useState(0);
 
-  const displayWalks = useMemo(() => {
-    if (walks.length > 0) {
-      return walks;
+  useEffect(() => {
+    if (tracks[0] && !activeWalkId) {
+      setActiveWalkId(tracks[0].id);
     }
-    return [
-      { id: 'demo-1', when: 'Сегодня 17:45', km: '2.9 км', minutes: '38 мин', steps: '3780' },
-      { id: 'demo-2', when: 'Сегодня 07:30', km: '2.4 км', minutes: '32 мин', steps: '3180' },
-      { id: 'demo-3', when: 'Вчера 18:15', km: '3.1 км', minutes: '41 мин', steps: '4050' },
-    ];
-  }, [walks]);
+  }, [tracks, activeWalkId]);
 
-  const activeWalk = displayWalks.find((item) => item.id === selectedWalk) ?? displayWalks[0];
+  const activeTrack = tracks.find((item) => item.id === activeWalkId) ?? tracks[0];
+  const sheetTrack = tracks.find((item) => item.id === sheetWalkId) ?? null;
   const dateLabel = dayOffset === 0 ? 'Сегодня' : dayOffset === 1 ? 'Вчера' : `${dayOffset} дн. назад`;
+
+  const camera = useMemo(() => trackCamera(activeTrack), [activeTrack]);
+  const polylines = useMemo<MapPolyline[]>(() => {
+    if (!activeTrack?.points?.length) return [];
+    return [
+      {
+        id: `path-${activeTrack.id}`,
+        coordinates: activeTrack.points,
+        color: '#E5A100',
+        width: 4,
+      },
+    ];
+  }, [activeTrack]);
+
+  const markers = useMemo<MapMarker[]>(() => {
+    const pts = activeTrack?.points ?? [];
+    const end = pts[pts.length - 1];
+    if (!end) return [];
+    return [{ id: 'walk-end', coordinate: end, kind: 'pet' }];
+  }, [activeTrack]);
 
   const selectRange = (next: RangeId) => {
     setRange(next);
@@ -105,6 +157,12 @@ export function WalkHistoryScreen({ navigation }: Props) {
     setRange(progressToRange(next));
   };
 
+  const selectTrack = (id: string) => {
+    setActiveWalkId(id);
+    setSheetWalkId(id);
+    setFollowKey((k) => k + 1);
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
@@ -113,8 +171,8 @@ export function WalkHistoryScreen({ navigation }: Props) {
           <Text style={styles.back}>←</Text>
         </Pressable>
         <Text style={styles.title}>История перемещений</Text>
-        <Pressable onPress={addWalk} hitSlop={8}>
-          <Ionicons name="add" size={24} color={colors.ink} />
+        <Pressable onPress={() => void reload()} hitSlop={8}>
+          <Ionicons name="refresh" size={22} color={colors.ink} />
         </Pressable>
       </View>
 
@@ -135,39 +193,57 @@ export function WalkHistoryScreen({ navigation }: Props) {
           bounces={false}
         >
           <View style={styles.mapCard}>
-            <View style={styles.heatA} />
-            <View style={styles.heatB} />
-            <View style={styles.heatC} />
-            <View style={styles.path} />
-            <View style={styles.mapPin}>
-              <PetAvatar pet={pet} size={44} />
-            </View>
-            <View style={styles.mapBubble}>
+            {LIVE_MAP ? (
+              <MapCanvas
+                style={styles.map}
+                camera={camera}
+                markers={markers}
+                polylines={polylines}
+                followKey={followKey}
+              />
+            ) : (
+              <View style={[styles.map, { backgroundColor: '#C9D6C4' }]} />
+            )}
+            {loading ? (
+              <View style={styles.mapLoading}>
+                <ActivityIndicator color={colors.purple} />
+              </View>
+            ) : null}
+            <View style={styles.mapBubble} pointerEvents="none">
               <Text style={styles.mapBubbleText}>
-                {activeWalk?.when ?? dateLabel} · {activeWalk?.km ?? '2.9 км'}
+                {activeTrack
+                  ? `${formatWhen(activeTrack.startedAt)} · ${formatKm(activeTrack.distanceM)}`
+                  : `${dateLabel} · маршрут`}
               </Text>
             </View>
             <View style={styles.mapTools}>
-              <Pressable style={styles.toolBtn}>
-                <Ionicons name="share-outline" size={16} color={colors.ink} />
-              </Pressable>
-              <Pressable style={styles.toolBtn}>
+              <Pressable style={styles.toolBtn} onPress={() => setFollowKey((k) => k + 1)}>
                 <Ionicons name="locate-outline" size={16} color={colors.purple} />
               </Pressable>
-              <Pressable style={styles.toolBtn}>
+              <Pressable style={styles.toolBtn} onPress={() => void reload()}>
                 <Ionicons name="layers-outline" size={16} color={colors.ink} />
               </Pressable>
             </View>
           </View>
 
           <View style={styles.controls}>
+            <Text style={styles.sourceHint}>
+              {source === 'api'
+                ? 'Маршруты с сервера Tailio (Render)'
+                : 'Демо-маршруты офлайн — сервер недоступен'}
+            </Text>
+
             <View style={styles.dateRow}>
               <Pressable onPress={() => setDayOffset((value) => value + 1)} style={styles.dateArrow}>
                 <Ionicons name="chevron-back" size={18} color={colors.ink} />
               </Pressable>
               <View style={{ alignItems: 'center' }}>
                 <Text style={styles.dateTitle}>{dateLabel}</Text>
-                <Text style={styles.dateMeta}>08:51 — 23:21 · {range}</Text>
+                <Text style={styles.dateMeta}>
+                  {activeTrack
+                    ? `${formatWhen(activeTrack.startedAt)} — ${formatWhen(activeTrack.endedAt)} · ${range}`
+                    : `08:51 — 23:21 · ${range}`}
+                </Text>
               </View>
               <Pressable
                 onPress={() => setDayOffset((value) => Math.max(0, value - 1))}
@@ -196,21 +272,22 @@ export function WalkHistoryScreen({ navigation }: Props) {
             </View>
 
             <Text style={styles.listTitle}>Прогулки</Text>
-            {displayWalks.map((item) => {
-              const active = item.id === activeWalk?.id;
+            {tracks.map((item) => {
+              const active = item.id === activeTrack?.id;
               return (
                 <Pressable
                   key={item.id}
                   style={[styles.walkCard, active && styles.walkCardOn]}
-                  onPress={() => setSelectedWalk(item.id)}
+                  onPress={() => selectTrack(item.id)}
                 >
                   <View style={styles.pin}>
                     <Ionicons name="location" size={18} color={colors.green} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.when}>{item.when}</Text>
+                    <Text style={styles.when}>{formatWhen(item.startedAt)}</Text>
                     <Text style={styles.meta}>
-                      {item.km} · {item.minutes} · {item.steps} шагов
+                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)} · {item.steps} шагов ·{' '}
+                      {item.points.length} точек
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -254,12 +331,20 @@ export function WalkHistoryScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
-      <InAppSheet visible={Boolean(selectedWalk)} onClose={() => setSelectedWalk(null)}>
-        <Text style={styles.sheetTitle}>{activeWalk?.when}</Text>
+      <InAppSheet visible={Boolean(sheetTrack)} onClose={() => setSheetWalkId(null)}>
+        <Text style={styles.sheetTitle}>{sheetTrack ? formatWhen(sheetTrack.startedAt) : ''}</Text>
         <Text style={styles.sheetCopy}>
-          {activeWalk?.km} · {activeWalk?.minutes} · {activeWalk?.steps} шагов
+          {sheetTrack
+            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)} · ${sheetTrack.steps} шагов`
+            : ''}
         </Text>
-        <Text style={styles.sheetCopy}>Демо-маршрут на карте выше. Живой GPS появится позже.</Text>
+        <Text style={styles.sheetCopy}>
+          Маршрут из {sheetTrack?.points.length ?? 0} GPS-точек
+          {sheetTrack?.source === 'demo' || sheetTrack?.source === 'local-demo'
+            ? ' (демо до телеметрии ошейника)'
+            : ''}
+          .
+        </Text>
       </InAppSheet>
     </SafeAreaView>
   );
@@ -319,59 +404,26 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   mapCard: {
-    height: 240,
+    height: 260,
     marginHorizontal: spacing.xl,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#C9D6C4',
+    backgroundColor: '#E8EEF2',
   },
-  heatA: {
-    position: 'absolute',
-    left: '18%',
-    top: '28%',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(46, 204, 113, 0.35)',
+  map: {
+    flex: 1,
   },
-  heatB: {
-    position: 'absolute',
-    left: '34%',
-    top: '34%',
-    width: 110,
-    height: 70,
-    borderRadius: 40,
-    backgroundColor: 'rgba(241, 196, 15, 0.4)',
-    transform: [{ rotate: '18deg' }],
-  },
-  heatC: {
-    position: 'absolute',
-    left: '52%',
-    top: '40%',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(231, 76, 60, 0.35)',
-  },
-  path: {
-    position: 'absolute',
-    left: '22%',
-    top: '42%',
-    width: '48%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F39C12',
-    transform: [{ rotate: '12deg' }],
-  },
-  mapPin: {
-    position: 'absolute',
-    left: '58%',
-    top: '38%',
+  mapLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   mapBubble: {
     position: 'absolute',
-    left: '42%',
-    top: '22%',
+    left: 12,
+    top: 12,
+    maxWidth: '70%',
     backgroundColor: colors.paper,
     borderRadius: radius.pill,
     paddingHorizontal: 10,
@@ -399,6 +451,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: 14,
     gap: 14,
+  },
+  sourceHint: {
+    ...type.caption,
+    color: colors.muted,
   },
   dateRow: {
     flexDirection: 'row',

@@ -9,3 +9,4 @@ export type {
 } from './types';
 export { useCollarLocation } from './useCollarLocation';
 export { useGeofenceAlerts } from './useGeofenceAlerts';
+export { usePetTracks } from './usePetTracks';
