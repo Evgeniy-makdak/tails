@@ -6,9 +6,15 @@ import { colors } from '../theme';
 type Props = {
   /** Full side length of the square in screen pixels. */
   sidePx: number;
+  /** Offset from the map viewport center (px). */
+  offsetX: number;
+  offsetY: number;
   strokeColor: string;
   fillColor: string;
   onResize: (nextSidePx: number) => void;
+  /** Drag the whole square (screen px delta from gesture start). */
+  onMove: (dx: number, dy: number) => void;
+  onMoveEnd?: () => void;
   minSidePx?: number;
   maxSidePx?: number;
 };
@@ -23,20 +29,39 @@ const CORNERS: Corner[] = [
 ];
 
 /**
- * Centered square overlay with corner handles to stretch/compress a geofence.
- * Map stays centered on the zone; size is converted to meters by the parent.
+ * Movable + resizable square overlay for geofence editing.
+ * Parent converts screen deltas ↔ lat/lng.
  */
 export function ZoneResizeOverlay({
   sidePx,
+  offsetX,
+  offsetY,
   strokeColor,
   fillColor,
   onResize,
+  onMove,
+  onMoveEnd,
   minSidePx = 64,
   maxSidePx = 420,
 }: Props) {
   const startSide = useRef(sidePx);
   const latestSide = useRef(sidePx);
   latestSide.current = sidePx;
+
+  const bodyPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_evt, gesture) => {
+          onMove(gesture.dx, gesture.dy);
+        },
+        onPanResponderRelease: () => onMoveEnd?.(),
+        onPanResponderTerminate: () => onMoveEnd?.(),
+      }),
+    [onMove, onMoveEnd],
+  );
 
   const responders = useMemo(() => {
     return CORNERS.map((corner) => {
@@ -48,7 +73,6 @@ export function ZoneResizeOverlay({
           startSide.current = latestSide.current;
         },
         onPanResponderMove: (_evt, gesture) => {
-          // Dragging a corner outward (along its quadrant) grows the square.
           const growth = corner.sx * gesture.dx + corner.sy * gesture.dy;
           const next = Math.min(maxSidePx, Math.max(minSidePx, startSide.current + growth));
           onResize(next);
@@ -63,18 +87,18 @@ export function ZoneResizeOverlay({
   return (
     <View style={styles.root} pointerEvents="box-none">
       <View
+        {...bodyPan.panHandlers}
         style={[
           styles.square,
           {
             width: sidePx,
             height: sidePx,
-            marginLeft: -half,
-            marginTop: -half,
+            marginLeft: offsetX - half,
+            marginTop: offsetY - half,
             borderColor: strokeColor,
             backgroundColor: fillColor,
           },
         ]}
-        pointerEvents="none"
       />
       {responders.map((corner) => (
         <View
@@ -83,8 +107,8 @@ export function ZoneResizeOverlay({
           style={[
             styles.handle,
             {
-              marginLeft: corner.sx * half - 14,
-              marginTop: corner.sy * half - 14,
+              marginLeft: offsetX + corner.sx * half - 14,
+              marginTop: offsetY + corner.sy * half - 14,
               borderColor: strokeColor,
             },
           ]}
@@ -105,7 +129,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    borderWidth: 0,
+    borderWidth: 3,
     borderRadius: 10,
   },
   handle: {

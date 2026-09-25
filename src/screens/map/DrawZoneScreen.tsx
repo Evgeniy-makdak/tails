@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,9 +12,12 @@ import {
   MapCanvas,
   ZoneResizeOverlay,
   boundsToPolygon,
+  latLngDeltaToScreenPx,
   mapConfig,
   metersPerPixel,
+  screenDeltaToLatLngDelta,
   squareBoundsFromCenter,
+  type MapLatLng,
 } from '../../map';
 import { useActivePet } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
@@ -34,16 +37,37 @@ export function DrawZoneScreen({ navigation, route }: Props) {
   const [mapZoom, setMapZoom] = useState(16);
   const [followKey, setFollowKey] = useState(0);
 
-  const center = point ?? mapConfig.defaultCamera.center;
-  const bounds = useMemo(() => squareBoundsFromCenter(center, halfSideM), [center, halfSideM]);
+  const petPoint = point ?? mapConfig.defaultCamera.center;
+  /** Independent zone anchor — can be dragged away from the pet. */
+  const [zoneCenter, setZoneCenter] = useState<MapLatLng>(petPoint);
+  /** Map camera center — pan separately from the zone. */
+  const [mapCenter, setMapCenter] = useState<MapLatLng>(petPoint);
+  const seededRef = useRef(false);
+  const dragOriginRef = useRef<MapLatLng | null>(null);
+  const zoneCenterRef = useRef(zoneCenter);
+  zoneCenterRef.current = zoneCenter;
+
+  useEffect(() => {
+    if (seededRef.current || !point) return;
+    seededRef.current = true;
+    setZoneCenter(point);
+    setMapCenter(point);
+    setFollowKey((k) => k + 1);
+  }, [point]);
+
+  const bounds = useMemo(() => squareBoundsFromCenter(zoneCenter, halfSideM), [zoneCenter, halfSideM]);
   const polygons = useMemo(() => [boundsToPolygon(bounds, 'draft-zone', kind)], [bounds, kind]);
   const markers = useMemo(
-    () => [{ id: 'pet', coordinate: center, kind: 'pet' as const }],
-    [center],
+    () => [{ id: 'pet', coordinate: petPoint, kind: 'pet' as const }],
+    [petPoint],
   );
 
-  const mpp = metersPerPixel(center.latitude, mapZoom);
+  const mpp = metersPerPixel(mapCenter.latitude, mapZoom);
   const sidePx = Math.max(64, Math.min(420, (halfSideM * 2) / mpp));
+  const overlayOffset = useMemo(
+    () => latLngDeltaToScreenPx(zoneCenter, mapCenter, mapZoom),
+    [zoneCenter, mapCenter, mapZoom],
+  );
 
   const onResizePx = useCallback(
     (nextSidePx: number) => {
@@ -53,13 +77,34 @@ export function DrawZoneScreen({ navigation, route }: Props) {
     [mpp],
   );
 
+  const onMoveZone = useCallback(
+    (dx: number, dy: number) => {
+      if (!dragOriginRef.current) {
+        dragOriginRef.current = zoneCenterRef.current;
+      }
+      const origin = dragOriginRef.current;
+      const { dLat, dLng } = screenDeltaToLatLngDelta(dx, dy, mapCenter.latitude, mapZoom);
+      setZoneCenter({
+        latitude: origin.latitude + dLat,
+        longitude: origin.longitude + dLng,
+      });
+    },
+    [mapCenter.latitude, mapZoom],
+  );
+
+  const onMoveEnd = useCallback(() => {
+    dragOriginRef.current = null;
+  }, []);
+
   const stroke = kind === 'safe' ? colors.green : colors.red;
+  const fill = kind === 'safe' ? 'rgba(31,157,85,0.18)' : 'rgba(226,75,74,0.18)';
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
       <SafeAreaView edges={['top']} style={styles.topChrome} pointerEvents="box-none">
         <View style={styles.header}>
-          <Text style={styles.title}>Размер геозоны</Text>
+          <Text style={styles.title}>Разместите геозону</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.close}>
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
@@ -75,7 +120,9 @@ export function DrawZoneScreen({ navigation, route }: Props) {
             <Text style={[styles.toggleText, kind === 'danger' && styles.toggleTextOn]}>Опасные</Text>
           </Pressable>
         </View>
-        <Text style={styles.hint}>Потяните углы квадрата, чтобы растянуть или сжать зону</Text>
+        <Text style={styles.hint}>
+          Перетащите квадрат в нужное место на карте. Углами можно растянуть или сжать зону.
+        </Text>
       </SafeAreaView>
 
       <View style={styles.map}>
@@ -83,20 +130,29 @@ export function DrawZoneScreen({ navigation, route }: Props) {
           <>
             <MapCanvas
               style={StyleSheet.absoluteFillObject}
-              camera={{ center, zoom: mapZoom }}
+              camera={{ center: mapCenter, zoom: mapZoom }}
               markers={markers}
               polygons={polygons}
               followKey={followKey}
+              onCameraChange={(next) => {
+                setMapCenter(next.center);
+                setMapZoom(next.zoom);
+              }}
             />
             <ZoneResizeOverlay
               sidePx={sidePx}
+              offsetX={overlayOffset.x}
+              offsetY={overlayOffset.y}
               strokeColor={stroke}
-              fillColor="transparent"
+              fillColor={fill}
               onResize={onResizePx}
-            />          </>
+              onMove={onMoveZone}
+              onMoveEnd={onMoveEnd}
+            />
+          </>
         ) : (
           <View style={[styles.demoMap, { backgroundColor: '#D7E4D2' }]}>
-            <View style={[styles.demoPoly, { borderColor: stroke, backgroundColor: kind === 'safe' ? 'rgba(31,157,85,0.22)' : 'rgba(226,75,74,0.22)' }]} />
+            <View style={[styles.demoPoly, { borderColor: stroke, backgroundColor: fill }]} />
           </View>
         )}
 
@@ -116,11 +172,24 @@ export function DrawZoneScreen({ navigation, route }: Props) {
           <Pressable
             style={styles.zoomBtn}
             onPress={() => {
+              setMapCenter(petPoint);
               setMapZoom(16);
               setFollowKey((k) => k + 1);
             }}
+            accessibilityLabel="Карта к питомцу"
           >
             <Ionicons name="navigate" size={16} color={colors.purple} />
+          </Pressable>
+          <Pressable
+            style={styles.zoomBtn}
+            onPress={() => {
+              setZoneCenter(petPoint);
+              setMapCenter(petPoint);
+              setFollowKey((k) => k + 1);
+            }}
+            accessibilityLabel="Зону к питомцу"
+          >
+            <Ionicons name="locate" size={16} color={colors.green} />
           </Pressable>
         </View>
 

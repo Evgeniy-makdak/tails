@@ -51,6 +51,8 @@ export type MapCanvasProps = {
    * Used by the recenter control.
    */
   followKey?: number;
+  /** Fired when the user pans/zooms the live map (MapLibre). */
+  onCameraChange?: (camera: MapCamera) => void;
   /** Visual zoom multiplier used by demo surface (CSS scale). MapLibre will use camera.zoom. */
   previewScale?: number;
   children?: ReactNode;

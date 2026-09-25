@@ -114,6 +114,7 @@ export function MapLibreCanvas({
   polylines = [],
   polygons = [],
   followKey = 0,
+  onCameraChange,
   children,
   style,
 }: MapCanvasProps & { children?: ReactNode }): ReactNode {
@@ -124,6 +125,8 @@ export function MapLibreCanvas({
   /** User dragged the map — stop auto-centering on GPS until followKey bumps. */
   const userPanningRef = useRef(false);
   const lastFollowKeyRef = useRef(followKey);
+  const onCameraChangeRef = useRef(onCameraChange);
+  onCameraChangeRef.current = onCameraChange;
 
   const center = camera?.center ?? mapConfig.defaultCamera.center;
   const zoom = camera?.zoom ?? mapConfig.defaultCamera.zoom;
@@ -157,7 +160,16 @@ export function MapLibreCanvas({
     const onDragStart = () => {
       userPanningRef.current = true;
     };
+    const emitCamera = () => {
+      const c = map.getCenter();
+      onCameraChangeRef.current?.({
+        center: { latitude: c.lat, longitude: c.lng },
+        zoom: map.getZoom(),
+      });
+    };
     map.on('dragstart', onDragStart);
+    map.on('moveend', emitCamera);
+    map.on('zoomend', emitCamera);
 
     map.on('load', () => {
       ensureOverlayLayers(map);
@@ -175,6 +187,8 @@ export function MapLibreCanvas({
 
     return () => {
       map.off('dragstart', onDragStart);
+      map.off('moveend', emitCamera);
+      map.off('zoomend', emitCamera);
       for (const marker of markersRef.current.values()) marker.remove();
       markersRef.current.clear();
       map.remove();

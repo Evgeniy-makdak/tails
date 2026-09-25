@@ -8,9 +8,11 @@ export {
   buildApproachPolyline,
   buildForbiddenZoneCircle,
   circleToGeoJSON,
+  latLngDeltaToScreenPx,
   metersPerPixel,
   offsetPoint,
   pointInBounds,
+  screenDeltaToLatLngDelta,
   squareBoundsFromCenter,
 } from './geofence';
 export { MapCanvas } from './MapCanvas';

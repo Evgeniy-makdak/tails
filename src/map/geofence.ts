@@ -29,6 +29,36 @@ export function metersPerPixel(latitude: number, zoom: number): number {
   return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
 }
 
+/** Screen px east/south from map camera center → geographic offset. */
+export function screenDeltaToLatLngDelta(
+  dxPx: number,
+  dyPx: number,
+  cameraLat: number,
+  zoom: number,
+): { dLat: number; dLng: number } {
+  const mpp = metersPerPixel(cameraLat, zoom);
+  const metersEast = dxPx * mpp;
+  const metersNorth = -dyPx * mpp; // screen Y grows downward
+  const dLat = metersNorth / 110540;
+  const dLng = metersEast / (111320 * Math.max(0.2, Math.cos((cameraLat * Math.PI) / 180)));
+  return { dLat, dLng };
+}
+
+/** Geographic point relative to camera → screen px from viewport center. */
+export function latLngDeltaToScreenPx(
+  point: MapLatLng,
+  camera: MapLatLng,
+  zoom: number,
+): { x: number; y: number } {
+  const mpp = metersPerPixel(camera.latitude, zoom);
+  const metersEast =
+    (point.longitude - camera.longitude) *
+    111320 *
+    Math.max(0.2, Math.cos((camera.latitude * Math.PI) / 180));
+  const metersNorth = (point.latitude - camera.latitude) * 110540;
+  return { x: metersEast / mpp, y: -metersNorth / mpp };
+}
+
 /** Square geofence: halfSideM from center to each side. */
 export function squareBoundsFromCenter(center: MapLatLng, halfSideM: number): GeoZoneBounds {
   const north = offsetPoint(center, halfSideM, 0).latitude;
