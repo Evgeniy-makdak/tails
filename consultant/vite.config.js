@@ -29,11 +29,19 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // Fallback proxy if VITE_API_URL / VITE_WS_URL are unset.
+    // Prefer consultant/.env.development → Render (same backend as Pages/phone).
     proxy: {
-      '/api': 'http://localhost:8787',
+      '/api': {
+        target: process.env.VITE_API_URL || 'https://tailio-chat.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
       '/ws': {
-        target: 'ws://localhost:8787',
+        target: (process.env.VITE_WS_URL || 'wss://tailio-chat.onrender.com/ws').replace(/\/ws$/, ''),
         ws: true,
+        changeOrigin: true,
+        secure: true,
       },
     },
   },

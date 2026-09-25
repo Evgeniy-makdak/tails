@@ -4,9 +4,23 @@ import { createChatSocket } from './socket.js';
 
 const TOKEN_KEY = 'tailio_consultant_token';
 const PROFILE_KEY = 'tailio_consultant_profile';
+const API_HOST_KEY = 'tailio_consultant_api';
+/** Same backend as phone/Pages (Render). Tokens from local :8787 are invalid here. */
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+function clearStoredSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(PROFILE_KEY);
+}
 
 function loadSession() {
   try {
+    const savedApi = localStorage.getItem(API_HOST_KEY);
+    if (savedApi !== API_BASE) {
+      clearStoredSession();
+      localStorage.setItem(API_HOST_KEY, API_BASE);
+      return null;
+    }
     const token = localStorage.getItem(TOKEN_KEY);
     const profile = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null');
     if (token && profile) return { token, profile };
@@ -64,8 +78,7 @@ export default function App() {
   const logout = () => {
     socketRef.current?.close();
     socketRef.current = null;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(PROFILE_KEY);
+    clearStoredSession();
     setSession(null);
     setWaiting([]);
     setActive([]);
@@ -74,6 +87,7 @@ export default function App() {
   };
 
   const persistSession = (token, profile) => {
+    localStorage.setItem(API_HOST_KEY, API_BASE);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     setSession({ token, profile });
@@ -175,6 +189,11 @@ export default function App() {
             }
             break;
           case 'error':
+            if (msg.code === 'invalid_token' || msg.code === 'unauthorized') {
+              showToast('Сессия устарела — войдите снова');
+              logout();
+              break;
+            }
             showToast(msg.message || msg.code || 'Ошибка');
             break;
           default:
