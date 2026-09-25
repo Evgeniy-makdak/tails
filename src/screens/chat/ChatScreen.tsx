@@ -53,8 +53,8 @@ export function ChatScreen({ navigation, route }: Props) {
     () =>
       isHelp
         ? `Вы на связи со службой помощи Tailio. Расскажите, что случилось с ${pet.name} — специалист подключится к диалогу.`
-        : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.`,
-    [isHelp, pet.name],
+        : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.\n\nЯ уже проверил его состояние. Сейчас индекс его здоровья составляет ${pet.healthScore}%.`,
+    [isHelp, pet.name, pet.healthScore],
   );
 
   const welcome = useMemo<UiChatMessage[]>(
@@ -374,11 +374,11 @@ export function ChatScreen({ navigation, route }: Props) {
 }
 
 function MessageBody({ text }: { text: string }) {
-  const parts = text.split(/(спокоен|нормы|норме)/gi);
+  const parts = text.split(/(\d+%|спокоен|нормы|норме)/gi);
   return (
     <Text style={styles.text}>
       {parts.map((part, index) => {
-        const highlight = /^(спокоен|нормы|норме)$/i.test(part);
+        const highlight = /^(\d+%|спокоен|нормы|норме)$/i.test(part);
         return (
           <Text key={`${part}-${index}`} style={highlight ? styles.ok : undefined}>
             {part}

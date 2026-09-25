@@ -5,6 +5,11 @@ import { API_BASE_URL, toWsBaseUrl } from '../config/features';
 import type { LiveConversation, LiveMessage, UiChatMessage } from './types';
 import { liveToUiMessage } from './types';
 
+/** Client welcome + any older welcome variants stored in history. */
+function isWelcomeLike(text: string) {
+  return /^Добро пожаловать в Tailio/i.test(text.trim());
+}
+
 type Options = {
   enabled: boolean;
   email: string | null;
@@ -116,7 +121,7 @@ export function useLiveChat(options: Options) {
               const mapped = list.map(liveToUiMessage);
               setMessages([
                 { id: 'welcome', role: 'bot', text: welcomeText },
-                ...mapped.filter((m) => m.text !== welcomeText),
+                ...mapped.filter((m) => m.text !== welcomeText && !isWelcomeLike(m.text)),
               ]);
               break;
             }
