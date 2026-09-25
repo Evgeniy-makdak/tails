@@ -11,6 +11,8 @@ import { useCollarLocation } from '../../location';
 import {
   MapCanvas,
   ZoneResizeOverlay,
+  boundsCenter,
+  boundsHalfSideM,
   boundsToPolygon,
   latLngDeltaToScreenPx,
   mapConfig,
@@ -19,7 +21,7 @@ import {
   squareBoundsFromCenter,
   type MapLatLng,
 } from '../../map';
-import { useActivePet } from '../../store/useAppStore';
+import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 
@@ -32,17 +34,27 @@ const MAX_HALF_M = 400;
 export function DrawZoneScreen({ navigation, route }: Props) {
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
-  const [kind, setKind] = useState<'safe' | 'danger'>(route.params?.kind ?? 'safe');
-  const [halfSideM, setHalfSideM] = useState(100);
+  const zones = useAppStore((state) => state.geozones);
+  const zoneId = route.params?.zoneId;
+  const editing = zones.find((z) => z.id === zoneId);
+  const isEdit = Boolean(editing);
+
+  const [kind, setKind] = useState<'safe' | 'danger'>(
+    editing?.kind ?? route.params?.kind ?? 'safe',
+  );
+  const [halfSideM, setHalfSideM] = useState(() =>
+    editing?.bounds ? boundsHalfSideM(editing.bounds) : 100,
+  );
   const [mapZoom, setMapZoom] = useState(16);
   const [followKey, setFollowKey] = useState(0);
 
   const petPoint = point ?? mapConfig.defaultCamera.center;
+  const initialCenter = editing?.bounds ? boundsCenter(editing.bounds) : petPoint;
   /** Independent zone anchor — can be dragged away from the pet. */
-  const [zoneCenter, setZoneCenter] = useState<MapLatLng>(petPoint);
+  const [zoneCenter, setZoneCenter] = useState<MapLatLng>(initialCenter);
   /** Map camera center — pan separately from the zone. */
-  const [mapCenter, setMapCenter] = useState<MapLatLng>(petPoint);
-  const seededRef = useRef(false);
+  const [mapCenter, setMapCenter] = useState<MapLatLng>(initialCenter);
+  const seededRef = useRef(isEdit);
   const dragOriginRef = useRef<MapLatLng | null>(null);
   const zoneCenterRef = useRef(zoneCenter);
   zoneCenterRef.current = zoneCenter;
@@ -104,7 +116,7 @@ export function DrawZoneScreen({ navigation, route }: Props) {
       <StatusBar style="dark" />
       <SafeAreaView edges={['top']} style={styles.topChrome} pointerEvents="box-none">
         <View style={styles.header}>
-          <Text style={styles.title}>Разместите геозону</Text>
+          <Text style={styles.title}>{isEdit ? 'Измените геозону' : 'Разместите геозону'}</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.close}>
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
@@ -194,7 +206,9 @@ export function DrawZoneScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.sizePill}>
-          <Text style={styles.sizeText}>~{Math.round(halfSideM * 2)} × {Math.round(halfSideM * 2)} м</Text>
+          <Text style={styles.sizeText}>
+            ~{Math.round(halfSideM * 2)} × {Math.round(halfSideM * 2)} м
+          </Text>
         </View>
       </View>
 
@@ -205,6 +219,9 @@ export function DrawZoneScreen({ navigation, route }: Props) {
             navigation.navigate('CreatePlace', {
               kind,
               bounds,
+              zoneId: editing?.id,
+              title: editing?.title,
+              address: editing?.address,
             })
           }
         />

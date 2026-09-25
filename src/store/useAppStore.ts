@@ -60,6 +60,8 @@ type AppState = AccountSession & {
   markNotificationsUnread: (ids: string[]) => void;
   addLog: (kind: QuickActionKind) => void;
   addGeozone: (zone: Omit<GeoZone, 'id'>) => void;
+  updateGeozone: (id: string, patch: Partial<Omit<GeoZone, 'id'>>) => void;
+  removeGeozone: (id: string) => void;
   addWalk: () => void;
 };
 
@@ -292,6 +294,14 @@ export const useAppStore = create<AppState>()(
         addGeozone: (zone) =>
           commit({
             geozones: [{ ...zone, id: `zone-${Date.now()}` }, ...get().geozones],
+          }),
+        updateGeozone: (id, patch) =>
+          commit({
+            geozones: get().geozones.map((zone) => (zone.id === id ? { ...zone, ...patch } : zone)),
+          }),
+        removeGeozone: (id) =>
+          commit({
+            geozones: get().geozones.filter((zone) => zone.id !== id),
           }),
         addWalk: () =>
           commit({

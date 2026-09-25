@@ -9,6 +9,7 @@ import { TailioBlob } from '../../components/brand/TailioMark';
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { MAP_ENGINE } from '../../config/features';
+import type { GeoZone } from '../../data/auth';
 import { useCollarLocation } from '../../location';
 import {
   MapCanvas,
@@ -29,10 +30,14 @@ const LIVE_MAP = MAP_ENGINE === 'maplibre';
 export function GeozonesScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [hint, setHint] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const zones = useAppStore((state) => state.geozones);
+  const removeGeozone = useAppStore((state) => state.removeGeozone);
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
   const items = zones.filter((item) => filter === 'all' || item.kind === filter);
+  const selected = zones.find((z) => z.id === selectedId) ?? null;
 
   const center = useMemo(() => {
     const withBounds = items.find((z) => z.bounds)?.bounds;
@@ -55,6 +60,30 @@ export function GeozonesScreen({ navigation }: Props) {
         : [{ id: 'pet', coordinate: center, kind: 'pet' as const }],
     [point, center],
   );
+
+  const openZone = (zone: GeoZone) => {
+    setConfirmDelete(false);
+    setSelectedId(zone.id);
+  };
+
+  const closeSheet = () => {
+    setSelectedId(null);
+    setConfirmDelete(false);
+  };
+
+  const startEdit = () => {
+    if (!selected) return;
+    const id = selected.id;
+    const kind = selected.kind;
+    closeSheet();
+    navigation.navigate('DrawZone', { zoneId: id, kind });
+  };
+
+  const doDelete = () => {
+    if (!selected) return;
+    removeGeozone(selected.id);
+    closeSheet();
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -107,16 +136,23 @@ export function GeozonesScreen({ navigation }: Props) {
           </View>
         ) : (
           items.map((item) => (
-            <View key={item.id} style={[styles.card, item.kind === 'safe' ? styles.safe : styles.danger]}>
+            <Pressable
+              key={item.id}
+              style={[styles.card, item.kind === 'safe' ? styles.safe : styles.danger]}
+              onPress={() => openZone(item)}
+            >
               <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
+                <View style={styles.cardTop}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.inkSoft} />
+                </View>
                 <Text style={styles.cardMeta}>{item.address}</Text>
                 <Text style={styles.cardMeta}>
                   {item.kind === 'safe' ? 'Безопасная' : 'Опасная'}
                   {item.bounds ? ' · на карте' : ' · без координат'}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           ))
         )}
       </ScrollView>
@@ -129,7 +165,7 @@ export function GeozonesScreen({ navigation }: Props) {
         <Text style={styles.sheetTitle}>Безопасные и опасные зоны</Text>
         <Text style={styles.cardMeta}>
           Нарисуйте квадрат на карте. Выход из безопасной зоны — мягкий сигнал; приближение и вход в
-          опасную — тревожный.
+          опасную — тревожный. Сохранённые зоны можно изменить или удалить.
         </Text>
         <Button
           label="Создать"
@@ -138,6 +174,38 @@ export function GeozonesScreen({ navigation }: Props) {
             navigation.navigate('DrawZone', { kind: 'safe' });
           }}
         />
+      </InAppSheet>
+
+      <InAppSheet visible={Boolean(selected) && !confirmDelete} onClose={closeSheet}>
+        <Text style={styles.sheetTitle}>{selected?.title ?? 'Зона'}</Text>
+        <Text style={styles.cardMeta}>
+          {selected?.address}
+          {'\n'}
+          {selected?.kind === 'safe' ? 'Безопасная' : 'Опасная'}
+          {selected?.bounds ? ' · на карте' : ' · без координат'}
+        </Text>
+        <Button label="Изменить на карте" onPress={startEdit} />
+        <Pressable
+          style={styles.deleteBtn}
+          onPress={() => setConfirmDelete(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Удалить зону"
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.red} />
+          <Text style={styles.deleteText}>Удалить зону</Text>
+        </Pressable>
+      </InAppSheet>
+
+      <InAppSheet visible={Boolean(selected) && confirmDelete} onClose={() => setConfirmDelete(false)}>
+        <Text style={styles.sheetTitle}>Удалить «{selected?.title}»?</Text>
+        <Text style={styles.cardMeta}>
+          Зона исчезнет с карты, сигнализация по ней перестанет срабатывать. Это действие нельзя
+          отменить.
+        </Text>
+        <Button label="Удалить" onPress={doDelete} />
+        <Pressable style={styles.cancelBtn} onPress={() => setConfirmDelete(false)}>
+          <Text style={styles.cancelText}>Отмена</Text>
+        </Pressable>
       </InAppSheet>
     </SafeAreaView>
   );
@@ -235,9 +303,16 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 2,
   },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   cardTitle: {
     ...type.subtitle,
     color: colors.ink,
+    flex: 1,
   },
   cardMeta: {
     ...type.body,
@@ -257,5 +332,28 @@ const styles = StyleSheet.create({
   sheetTitle: {
     ...type.title,
     color: colors.ink,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#F0C4C0',
+    backgroundColor: '#FFF5F4',
+  },
+  deleteText: {
+    ...type.subtitle,
+    color: colors.red,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  cancelText: {
+    ...type.subtitle,
+    color: colors.muted,
   },
 });

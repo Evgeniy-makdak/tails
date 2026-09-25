@@ -33,9 +33,12 @@ export type AppStackParamList = {
   AddLog: { kind?: QuickActionKind };
   Documents: undefined;
   Geozones: undefined;
-  DrawZone: { kind?: 'safe' | 'danger' };
+  DrawZone: { kind?: 'safe' | 'danger'; zoneId?: string } | undefined;
   CreatePlace: {
     kind?: 'safe' | 'danger';
+    zoneId?: string;
+    title?: string;
+    address?: string;
     bounds?: {
       north: number;
       south: number;

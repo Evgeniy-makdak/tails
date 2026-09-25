@@ -15,10 +15,15 @@ type Props = NativeStackScreenProps<AppStackParamList, 'CreatePlace'>;
 
 export function CreatePlaceScreen({ navigation, route }: Props) {
   const addGeozone = useAppStore((state) => state.addGeozone);
+  const updateGeozone = useAppStore((state) => state.updateGeozone);
   const kind = route.params?.kind ?? 'safe';
+  const zoneId = route.params?.zoneId;
+  const isEdit = Boolean(zoneId);
   const bounds = route.params?.bounds as GeoZoneBounds | undefined;
-  const [name, setName] = useState(kind === 'safe' ? 'Дом' : 'Парковка');
-  const [address, setAddress] = useState('ул. Пушкина, д. 15');
+  const [name, setName] = useState(
+    route.params?.title ?? (kind === 'safe' ? 'Дом' : 'Парковка'),
+  );
+  const [address, setAddress] = useState(route.params?.address ?? 'ул. Пушкина, д. 15');
   const ready = name.trim().length > 0 && address.trim().length > 0;
 
   return (
@@ -26,7 +31,7 @@ export function CreatePlaceScreen({ navigation, route }: Props) {
       <StatusBar style="dark" />
       <View style={styles.header}>
         <View style={{ width: 28 }} />
-        <Text style={styles.title}>Создание нового места</Text>
+        <Text style={styles.title}>{isEdit ? 'Изменение места' : 'Создание нового места'}</Text>
         <Pressable onPress={() => navigation.goBack()}>
           <Text style={styles.close}>✕</Text>
         </Pressable>
@@ -56,15 +61,20 @@ export function CreatePlaceScreen({ navigation, route }: Props) {
       </View>
       <View style={styles.footer}>
         <Button
-          label="Сохранить"
+          label={isEdit ? 'Сохранить изменения' : 'Сохранить'}
           disabled={!ready}
           onPress={() => {
-            addGeozone({
+            const payload = {
               title: name.trim(),
               address: address.trim(),
               kind,
               bounds,
-            });
+            };
+            if (zoneId) {
+              updateGeozone(zoneId, payload);
+            } else {
+              addGeozone(payload);
+            }
             navigation.navigate('Geozones');
           }}
         />
