@@ -48,8 +48,10 @@ jobs:
         env:
           EXPO_PUBLIC_CHAT_LIVE: '1'
           EXPO_PUBLIC_API_URL: ${{ steps.chat.outputs.url }}
+          EXPO_PUBLIC_MAP_ENGINE: maplibre
+          EXPO_PUBLIC_LOCATION_MODE: device
         run: |
-          echo "Building live chat → $EXPO_PUBLIC_API_URL"
+          echo "Building live chat → $EXPO_PUBLIC_API_URL (map=maplibre, location=device)"
           npm run build:web
           if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
             echo "::error::API URL was not inlined into the bundle"

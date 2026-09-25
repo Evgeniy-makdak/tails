@@ -17,7 +17,7 @@ export type CollarLocationSnapshot = {
   batteryPercent?: number;
   online: boolean;
   /** Raw provider label for debug */
-  source: 'demo' | 'api';
+  source: 'demo' | 'api' | 'device';
 };
 
 export type CollarLocationListener = (snapshot: CollarLocationSnapshot | null) => void;

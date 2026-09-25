@@ -1,10 +1,13 @@
 import { DEMO_PET_COORDINATES } from '../location';
-import { DEFAULT_TILES } from './tiles';
+import { DEFAULT_MAP_STYLE_URL, DEFAULT_TILES } from './tiles';
 import type { MapCamera } from './types';
 
 export const mapConfig = {
+  /** OpenFreeMap Liberty (vector) — free, no API key. */
+  styleUrl: DEFAULT_MAP_STYLE_URL,
+  /** Raster fallback metadata (tests / offline stubs). */
   tiles: DEFAULT_TILES,
-  /** Default camera = current demo pet point (SPb). */
+  /** Default camera before first GPS fix (SPb). */
   defaultCamera: {
     center: {
       latitude: DEMO_PET_COORDINATES.latitude,
@@ -12,13 +15,6 @@ export const mapConfig = {
     },
     zoom: 15,
   } satisfies MapCamera,
-  /**
-   * When true, MapCanvas uses MapLibre (after packages are installed).
-   * Controlled by EXPO_PUBLIC_MAP_ENGINE — leave `demo` for GitHub Pages until ready.
-   */
-  preferMapLibrePackages: {
-    web: 'maplibre-gl',
-    /** Decide later: maplibre-react-native vs react-native-maps */
-    native: 'maplibre-react-native',
-  },
+  minZoom: 12,
+  maxZoom: 19,
 } as const;

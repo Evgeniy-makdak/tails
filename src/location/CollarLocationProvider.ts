@@ -10,7 +10,7 @@ import type {
  * API: HTTP poll / WebSocket from collar backend (see src/api/collar.ts).
  */
 export interface CollarLocationProvider {
-  readonly id: 'demo' | 'api';
+  readonly id: 'demo' | 'api' | 'device';
   /** One-shot read (may hit cache). */
   getCurrent(options: CollarLocationSubscribeOptions): Promise<CollarLocationSnapshot | null>;
   /** Live updates. Returns unsubscribe. */

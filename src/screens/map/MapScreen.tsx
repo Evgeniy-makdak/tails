@@ -4,15 +4,26 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PetAvatar } from '../../components/pet/PetAvatar';
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
+import { MAP_ENGINE } from '../../config/features';
 import { useCollarLocation } from '../../location';
-import { MapCanvas } from '../../map';
+import {
+  MapCanvas,
+  buildAllowedZoneCircle,
+  buildApproachPolyline,
+  mapConfig,
+  offsetPoint,
+  type MapCamera,
+  type MapCircle,
+  type MapMarker,
+  type MapPolyline,
+} from '../../map';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
@@ -33,11 +44,13 @@ type MapNav = CompositeNavigationProp<
 type SosPhase = 'off' | 'info' | 'active' | 'askFound' | 'notFound' | 'continue' | 'found';
 type SosActionSheet = 'help' | 'notify' | 'notifySent' | 'shareDone' | 'route' | 'callInfo' | null;
 
+const LIVE_MAP = MAP_ENGINE === 'maplibre';
+
 export function MapScreen() {
   const navigation = useNavigation<MapNav>();
   const pet = useActivePet();
   const updatePet = useAppStore((state) => state.updatePet);
-  const { coordsLabel } = useCollarLocation({
+  const { coordsLabel, point, source } = useCollarLocation({
     petId: pet.id,
     collarId: pet.collarId,
   });
@@ -46,12 +59,45 @@ export function MapScreen() {
   const [actionSheet, setActionSheet] = useState<SosActionSheet>(null);
   const [shareHint, setShareHint] = useState('');
   const [soundOn, setSoundOn] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  /** Demo surface CSS scale; live map uses mapZoom instead. */
+  const [previewScale, setPreviewScale] = useState(1);
+  const [mapZoom, setMapZoom] = useState(mapConfig.defaultCamera.zoom);
   const lightPulse = useRef(new Animated.Value(0)).current;
   const foundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sosActive = sosPhase === 'active' || sosPhase === 'askFound' || sosPhase === 'notFound' || sosPhase === 'continue';
   const ledOn = pet.ledOn;
+  const center = point ?? mapConfig.defaultCamera.center;
+
+  const camera = useMemo<MapCamera>(
+    () => ({
+      center,
+      zoom: mapZoom,
+    }),
+    [center, mapZoom],
+  );
+
+  const markers = useMemo<MapMarker[]>(() => {
+    const list: MapMarker[] = [{ id: 'pet', coordinate: center, kind: 'pet' }];
+    if (sosActive) {
+      list.push({
+        id: 'sos-ghost',
+        coordinate: offsetPoint(center, 35, 300),
+        kind: 'sos-ghost',
+      });
+    }
+    return list;
+  }, [center, sosActive]);
+
+  const circles = useMemo<MapCircle[]>(() => {
+    if (sosActive) return [];
+    return [buildAllowedZoneCircle(center, 120, 'zone-allowed')];
+  }, [center, sosActive]);
+
+  const polylines = useMemo<MapPolyline[]>(() => {
+    if (!sosActive) return [];
+    return [buildApproachPolyline(center, 'sos-trail')];
+  }, [center, sosActive]);
 
   useEffect(() => {
     return () => {
@@ -107,8 +153,32 @@ export function MapScreen() {
   const markNotFound = () => setSosPhase('notFound');
   const continueSearch = () => setSosPhase('continue');
   const stopSearch = () => setSosPhase('off');
-  const liveCoords = coordsLabel ?? '59.9362, 30.3141';
+  const liveCoords = coordsLabel ?? `${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)}`;
   const notifyPreview = buildNotifyMessage(pet.name, liveCoords);
+  const sourceHint =
+    source === 'device' ? 'GPS устройства' : source === 'api' ? 'Ошейник' : 'Демо';
+
+  const zoomIn = () => {
+    if (LIVE_MAP) {
+      setMapZoom((z) => Math.min(mapConfig.maxZoom, Number((z + 0.5).toFixed(1))));
+    } else {
+      setPreviewScale((z) => Math.min(1.35, Number((z + 0.1).toFixed(2))));
+    }
+  };
+  const zoomOut = () => {
+    if (LIVE_MAP) {
+      setMapZoom((z) => Math.max(mapConfig.minZoom, Number((z - 0.5).toFixed(1))));
+    } else {
+      setPreviewScale((z) => Math.max(0.85, Number((z - 0.1).toFixed(2))));
+    }
+  };
+  const recenter = () => {
+    if (LIVE_MAP) {
+      setMapZoom(mapConfig.defaultCamera.zoom);
+    } else {
+      setPreviewScale(1);
+    }
+  };
   const contactNames = DEMO_SOS_CONTACTS.map((c) => c.name).join(', ');
 
   const onNotifyRelatives = () => setActionSheet('notify');
@@ -159,13 +229,23 @@ export function MapScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <MapCanvas previewScale={zoom} style={styles.map}>
+      <MapCanvas
+        previewScale={LIVE_MAP ? 1 : previewScale}
+        style={styles.map}
+        camera={camera}
+        markers={LIVE_MAP ? markers : undefined}
+        circles={LIVE_MAP ? circles : undefined}
+        polylines={LIVE_MAP ? polylines : undefined}
+      >
         <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
           <View style={styles.live}>
             <View style={[styles.liveDot, sosActive && styles.liveDotSos]} />
             <Text style={styles.liveText}>Live · {pet.battery || 67}%</Text>
           </View>
-          <Text style={styles.coords}>{coordsLabel ?? '59.9362, 30.3141'}</Text>
+          <Text style={styles.coords}>
+            {liveCoords}
+            {LIVE_MAP ? ` · ${sourceHint}` : ''}
+          </Text>
         </SafeAreaView>
 
         {toast ? (
@@ -179,9 +259,9 @@ export function MapScreen() {
           </View>
         ) : null}
 
-        {!sosActive ? <View style={styles.zone} /> : null}
+        {!LIVE_MAP && !sosActive ? <View style={styles.zone} /> : null}
 
-        {sosActive ? (
+        {!LIVE_MAP && sosActive ? (
           <>
             <View style={styles.sosTrail} />
             <View style={styles.distanceTag}>
@@ -191,27 +271,29 @@ export function MapScreen() {
           </>
         ) : null}
 
-        <View style={[styles.pin, sosActive && styles.pinSos]}>
-          <Animated.View
-            style={[
-              styles.ledGlow,
-              {
-                opacity: ledOn ? lightPulse : 0,
-              },
-            ]}
-          />
-          <PetAvatar pet={pet} size={52} />
-        </View>
+        {!LIVE_MAP ? (
+          <View style={[styles.pin, sosActive && styles.pinSos]}>
+            <Animated.View
+              style={[
+                styles.ledGlow,
+                {
+                  opacity: ledOn ? lightPulse : 0,
+                },
+              ]}
+            />
+            <PetAvatar pet={pet} size={52} />
+          </View>
+        ) : null}
       </MapCanvas>
 
       <View style={styles.zoom} pointerEvents="box-none">
-        <Pressable style={styles.zoomBtn} onPress={() => setZoom((z) => Math.min(1.35, Number((z + 0.1).toFixed(2))))}>
+        <Pressable style={styles.zoomBtn} onPress={zoomIn}>
           <Ionicons name="add" size={18} color={colors.ink} />
         </Pressable>
-        <Pressable style={styles.zoomBtn} onPress={() => setZoom((z) => Math.max(0.85, Number((z - 0.1).toFixed(2))))}>
+        <Pressable style={styles.zoomBtn} onPress={zoomOut}>
           <Ionicons name="remove" size={18} color={colors.ink} />
         </Pressable>
-        <Pressable style={styles.zoomBtn} onPress={() => setZoom(1)}>
+        <Pressable style={styles.zoomBtn} onPress={recenter}>
           <Ionicons name="navigate" size={16} color={colors.purple} />
         </Pressable>
       </View>
@@ -402,7 +484,7 @@ function SosAction({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#D7E4D2',
+    backgroundColor: '#E8EEF2',
     position: 'relative',
     overflow: 'hidden',
   },

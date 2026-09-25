@@ -7,8 +7,8 @@ import type { MapCanvasProps } from './types';
 
 /**
  * Single entry for map rendering.
- * - demo (default): current green mock — unchanged UX
- * - maplibre: real tiles (stubs until packages are added)
+ * - maplibre (default): OpenFreeMap tiles via MapLibre
+ * - demo: painted green Figma mock
  */
 export function MapCanvas({
   previewScale = 1,

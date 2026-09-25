@@ -11,8 +11,8 @@ type Options = {
 };
 
 /**
- * Subscribe to collar (pet) location only — never owner phone GPS.
- * In demo mode returns the same fixed point shown today on MapScreen.
+ * Subscribe to pet location.
+ * Default provider = device GPS (stand-in for collar); demo/api via EXPO_PUBLIC_LOCATION_MODE.
  */
 export function useCollarLocation({ petId, collarId, intervalMs, enabled = true }: Options) {
   const [snapshot, setSnapshot] = useState<CollarLocationSnapshot | null>(null);

@@ -20,7 +20,8 @@
         "CFBundleDisplayName": "Хвостик",
         "NSCameraUsageDescription": "Хвостик использует камеру, чтобы прикрепить фото питомца в чат со специалистом.",
         "NSPhotoLibraryUsageDescription": "Хвостик использует галерею для вложений в чат и профиля питомца.",
-        "NSMicrophoneUsageDescription": "Хвостик использует микрофон для голосового набора в чате."
+        "NSMicrophoneUsageDescription": "Хвостик использует микрофон для голосового набора в чате.",
+        "NSLocationWhenInUseUsageDescription": "Хвостик показывает положение питомца на карте. Пока ошейник не подключён, используется геолокация устройства."
       }
     },
     "android": {
@@ -32,7 +33,9 @@
       "permissions": [
         "CAMERA",
         "READ_MEDIA_IMAGES",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -53,6 +56,12 @@
       "expo-font",
       "expo-splash-screen",
       "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Хвостик показывает положение питомца на карте. Пока ошейник не подключён, используется геолокация устройства."
+        }
+      ],
       [
         "expo-image-picker",
         {
