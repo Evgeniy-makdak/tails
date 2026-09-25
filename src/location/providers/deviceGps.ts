@@ -70,8 +70,10 @@ export function createDeviceCollarLocationProvider(): CollarLocationProvider {
           watch = await Location.watchPositionAsync(
             {
               accuracy: Location.Accuracy.Balanced,
+              /** Fire when the device moves ~5 m (platform may coalesce). */
               distanceInterval: 5,
-              timeInterval: options.intervalMs ?? 4000,
+              /** Also refresh at least about every 3 s while the watch is active. */
+              timeInterval: 3000,
             },
             (pos) => {
               if (!cancelled) listener(toSnapshot(options, pos.coords));

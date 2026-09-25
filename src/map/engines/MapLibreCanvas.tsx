@@ -45,6 +45,7 @@ function buildHtml(styleUrl: string) {
     const markers = new Map();
     let userPanning = false;
     let ready = false;
+    let lastFollowKey = 0;
 
     function circlesToFC(circles) {
       const EARTH = 6371008.8;
@@ -129,9 +130,20 @@ function buildHtml(styleUrl: string) {
       const cam = scene.camera || {};
       const center = cam.center || { latitude: 59.9362, longitude: 30.3141 };
       const zoom = typeof cam.zoom === 'number' ? cam.zoom : 15;
-      if (!userPanning) {
+      const followKey = typeof scene.followKey === 'number' ? scene.followKey : 0;
+
+      if (followKey !== lastFollowKey) {
+        lastFollowKey = followKey;
+        userPanning = false;
+        map.easeTo({ center: [center.longitude, center.latitude], zoom: zoom, duration: 450 });
+      } else if (userPanning) {
+        if (Math.abs(map.getZoom() - zoom) > 0.05) {
+          map.easeTo({ zoom: zoom, duration: 200 });
+        }
+      } else {
         map.easeTo({ center: [center.longitude, center.latitude], zoom: zoom, duration: 500 });
       }
+
       map.getSource(CIRCLES_SOURCE).setData(circlesToFC(scene.circles));
       map.getSource(LINES_SOURCE).setData(linesToFC(scene.polylines));
       syncMarkers(scene.markers);
@@ -171,6 +183,7 @@ export function MapLibreCanvas({
   markers = [],
   circles = [],
   polylines = [],
+  followKey = 0,
   children,
   style,
 }: MapCanvasProps & { children?: ReactNode }): ReactNode {
@@ -185,8 +198,9 @@ export function MapLibreCanvas({
       markers,
       circles,
       polylines,
+      followKey,
     }),
-    [camera, markers, circles, polylines],
+    [camera, markers, circles, polylines, followKey],
   );
 
   const pushScene = () => {

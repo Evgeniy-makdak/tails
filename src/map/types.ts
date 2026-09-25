@@ -37,6 +37,11 @@ export type MapCanvasProps = {
   markers?: MapMarker[];
   circles?: MapCircle[];
   polylines?: MapPolyline[];
+  /**
+   * Bump to force camera back to `camera.center` + zoom (clears “user panned” lock).
+   * Used by the recenter control.
+   */
+  followKey?: number;
   /** Visual zoom multiplier used by demo surface (CSS scale). MapLibre will use camera.zoom. */
   previewScale?: number;
   children?: ReactNode;

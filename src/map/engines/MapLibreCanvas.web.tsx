@@ -110,6 +110,7 @@ export function MapLibreCanvas({
   markers = [],
   circles = [],
   polylines = [],
+  followKey = 0,
   children,
   style,
 }: MapCanvasProps & { children?: ReactNode }): ReactNode {
@@ -117,7 +118,9 @@ export function MapLibreCanvas({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef(new Map<string, maplibregl.Marker>());
   const readyRef = useRef(false);
+  /** User dragged the map — stop auto-centering on GPS until followKey bumps. */
   const userPanningRef = useRef(false);
+  const lastFollowKeyRef = useRef(followKey);
 
   const center = camera?.center ?? mapConfig.defaultCamera.center;
   const zoom = camera?.zoom ?? mapConfig.defaultCamera.zoom;
@@ -136,7 +139,6 @@ export function MapLibreCanvas({
       attributionControl: { compact: true },
       logoPosition: 'bottom-left',
     });
-    // App chrome has its own +/- zoom controls.
     mapRef.current = map;
 
     const onDragStart = () => {
@@ -153,12 +155,10 @@ export function MapLibreCanvas({
       const lineSource = map.getSource(LINES_SOURCE) as maplibregl.GeoJSONSource | undefined;
       lineSource?.setData(polylinesToFeatureCollection(scene.polylines));
       syncMarkers(map, scene.markers, markersRef.current);
-      if (!userPanningRef.current) {
-        map.jumpTo({
-          center: [scene.center.longitude, scene.center.latitude],
-          zoom: scene.zoom,
-        });
-      }
+      map.jumpTo({
+        center: [scene.center.longitude, scene.center.latitude],
+        zoom: scene.zoom,
+      });
     });
 
     return () => {
@@ -169,18 +169,39 @@ export function MapLibreCanvas({
       mapRef.current = null;
       readyRef.current = false;
     };
-    // Intentionally mount once — camera/layers sync in effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Recenter control: always unlock follow and fly to pet.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    if (userPanningRef.current) return;
+    if (followKey === lastFollowKeyRef.current) return;
+    lastFollowKeyRef.current = followKey;
+    userPanningRef.current = false;
     map.easeTo({
       center: [center.longitude, center.latitude],
       zoom,
-      duration: 600,
+      duration: 450,
+    });
+  }, [followKey, center.latitude, center.longitude, zoom]);
+
+  // Zoom always applies. Center follows GPS only while not user-panned.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+
+    if (userPanningRef.current) {
+      if (Math.abs(map.getZoom() - zoom) > 0.05) {
+        map.easeTo({ zoom, duration: 200 });
+      }
+      return;
+    }
+
+    map.easeTo({
+      center: [center.longitude, center.latitude],
+      zoom,
+      duration: 500,
     });
   }, [center.latitude, center.longitude, zoom]);
 

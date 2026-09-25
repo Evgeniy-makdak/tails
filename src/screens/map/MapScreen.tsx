@@ -62,6 +62,8 @@ export function MapScreen() {
   /** Demo surface CSS scale; live map uses mapZoom instead. */
   const [previewScale, setPreviewScale] = useState(1);
   const [mapZoom, setMapZoom] = useState(mapConfig.defaultCamera.zoom);
+  /** Bump to force MapLibre back onto the pet after the user panned away. */
+  const [followKey, setFollowKey] = useState(0);
   const lightPulse = useRef(new Animated.Value(0)).current;
   const foundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -175,6 +177,7 @@ export function MapScreen() {
   const recenter = () => {
     if (LIVE_MAP) {
       setMapZoom(mapConfig.defaultCamera.zoom);
+      setFollowKey((k) => k + 1);
     } else {
       setPreviewScale(1);
     }
@@ -236,6 +239,7 @@ export function MapScreen() {
         markers={LIVE_MAP ? markers : undefined}
         circles={LIVE_MAP ? circles : undefined}
         polylines={LIVE_MAP ? polylines : undefined}
+        followKey={followKey}
       >
         <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
           <View style={styles.live}>
@@ -628,7 +632,8 @@ const styles = StyleSheet.create({
     right: 16,
     top: 110,
     gap: 8,
-    zIndex: 4,
+    zIndex: 20,
+    elevation: 20,
   },
   zoomBtn: {
     width: 40,
