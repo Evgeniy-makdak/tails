@@ -555,10 +555,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     gap: 14,
   },
-  sourceHint: {
-    ...type.caption,
-    color: colors.muted,
-  },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',

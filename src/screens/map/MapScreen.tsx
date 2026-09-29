@@ -13,7 +13,6 @@ import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { MAP_ENGINE } from '../../config/features';
 import { useCollarLocation, useWalkRecordingActions } from '../../location';
-import { useWalkRecordingStore } from '../../location/walkRecordingStore';
 import {
   MapCanvas,
   boundsToPolygon,
@@ -62,12 +61,10 @@ export function MapScreen() {
     active: walkActive,
     uploading: walkUploading,
     points: walkPoints,
-    startedAt: walkStartedAt,
     lastError: walkError,
     startWalk,
     finishWalk,
   } = useWalkRecordingActions();
-  const walkPointCount = useWalkRecordingStore((s) => s.points.length);
   const [walkHint, setWalkHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [sosPhase, setSosPhase] = useState<SosPhase>('off');
