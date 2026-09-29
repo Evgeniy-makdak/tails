@@ -12,9 +12,11 @@ import { listConsultantActive, listWaitingQueue, upsertAppUser } from './chatSer
 import { findById, findOne, insert, nowIso } from './db.js';
 import {
   createTrack,
-  ensureDemoTracks,
+  deleteTrackForUser,
+  deleteTracksForUser,
   getTrackById,
   listTracksForUser,
+  MAX_TRACKS_PER_USER,
 } from './trackService.js';
 
 export function createApiRouter() {
@@ -167,23 +169,11 @@ export function createApiRouter() {
   /** List GPS tracks / walks for the signed-in app user (pet history). */
   router.get('/tracks', authMiddleware, requireRole('user'), (req, res) => {
     const petId = req.query.petId ? String(req.query.petId) : undefined;
-    const seed = req.query.seed !== '0';
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
-    const center =
-      Number.isFinite(lat) && Number.isFinite(lng)
-        ? { latitude: lat, longitude: lng }
-        : { latitude: 59.9362, longitude: 30.3141 };
-
-    let tracks = listTracksForUser(req.auth.id, { petId });
-    if (seed && tracks.length === 0) {
-      tracks = ensureDemoTracks(req.auth.id, {
-        petId,
-        petName: req.query.petName ? String(req.query.petName) : undefined,
-        center,
-      });
-    }
-    res.json({ tracks });
+    const tracks = listTracksForUser(req.auth.id, {
+      petId,
+      limit: MAX_TRACKS_PER_USER,
+    });
+    res.json({ tracks, limit: MAX_TRACKS_PER_USER });
   });
 
   router.get('/tracks/:id', authMiddleware, requireRole('user'), (req, res) => {
@@ -195,7 +185,7 @@ export function createApiRouter() {
     res.json({ track });
   });
 
-  /** Collar / client upload of a finished track (points required). */
+  /** Collar / client upload of a finished track (points required, auto-downsampled). */
   router.post('/tracks', authMiddleware, requireRole('user'), (req, res) => {
     try {
       const track = createTrack({
@@ -206,7 +196,7 @@ export function createApiRouter() {
         startedAt: req.body?.startedAt,
         endedAt: req.body?.endedAt,
         steps: req.body?.steps,
-        source: req.body?.source || 'api',
+        source: req.body?.source || 'device',
       });
       res.status(201).json({ track });
     } catch (error) {
@@ -214,6 +204,22 @@ export function createApiRouter() {
         error: error instanceof Error ? error.message : 'create_failed',
       });
     }
+  });
+
+  router.delete('/tracks/:id', authMiddleware, requireRole('user'), (req, res) => {
+    const ok = deleteTrackForUser(req.auth.id, req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  /** Clear history to stay within Render Free limits. ?demo=1 removes only seeded demos. */
+  router.delete('/tracks', authMiddleware, requireRole('user'), (req, res) => {
+    const onlyDemo = req.query.demo === '1' || req.body?.onlyDemo === true;
+    const removed = deleteTracksForUser(req.auth.id, { onlyDemo });
+    res.json({ ok: true, removed });
   });
 
   return router;

@@ -109,3 +109,11 @@ export function removeById(collection, id) {
   if (state[collection].length !== before) persist();
   return before - state[collection].length;
 }
+
+export function removeWhere(collection, predicate) {
+  const before = state[collection].length;
+  state[collection] = state[collection].filter((row) => !predicate(row));
+  const removed = before - state[collection].length;
+  if (removed) persist();
+  return removed;
+}

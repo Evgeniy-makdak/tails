@@ -23,18 +23,9 @@ export type PetTrack = {
 export async function fetchPetTracks(options: {
   token: string;
   petId?: string;
-  petName?: string;
-  center?: MapLatLng;
-  seed?: boolean;
 }): Promise<PetTrack[]> {
   const params = new URLSearchParams();
   if (options.petId) params.set('petId', options.petId);
-  if (options.petName) params.set('petName', options.petName);
-  if (options.center) {
-    params.set('lat', String(options.center.latitude));
-    params.set('lng', String(options.center.longitude));
-  }
-  if (options.seed === false) params.set('seed', '0');
 
   const res = await fetch(`${API_BASE_URL}/api/tracks?${params.toString()}`, {
     headers: { Authorization: `Bearer ${options.token}` },
@@ -76,4 +67,33 @@ export async function uploadPetTrack(options: {
     throw new Error(data.message || data.error || `track_upload_${res.status}`);
   }
   return data.track as PetTrack;
+}
+
+export async function deletePetTrack(options: { token: string; trackId: string }): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/tracks/${encodeURIComponent(options.trackId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${options.token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `track_delete_${res.status}`);
+  }
+}
+
+export async function clearPetTracks(options: {
+  token: string;
+  onlyDemo?: boolean;
+}): Promise<number> {
+  const params = new URLSearchParams();
+  if (options.onlyDemo) params.set('demo', '1');
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE_URL}/api/tracks${qs ? `?${qs}` : ''}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${options.token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `tracks_clear_${res.status}`);
+  }
+  return Number(data.removed) || 0;
 }

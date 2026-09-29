@@ -18,7 +18,7 @@ import {
   NotificationsScreen,
   ReminderDetailScreen,
 } from '../screens/details/DetailScreens';
-import { useGeofenceAlerts } from '../location';
+import { useGeofenceAlerts, useWalkRecordingController } from '../location';
 import { useAppStore } from '../store/useAppStore';
 import { colors } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
@@ -44,6 +44,7 @@ export function RootNavigator() {
   const [hydrated, setHydrated] = useState(() => useAppStore.persist.hasHydrated());
 
   useGeofenceAlerts(isAuthenticated);
+  useWalkRecordingController(isAuthenticated);
 
   useEffect(() => {
     if (useAppStore.persist.hasHydrated()) {

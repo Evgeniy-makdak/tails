@@ -1,6 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
-import { findMany, insert, findById, nowIso } from './db.js';
+import { findMany, insert, findById, nowIso, removeById, removeWhere } from './db.js';
+
+/** Keep Render Free disk/egress small. */
+export const MAX_TRACKS_PER_USER = 12;
+export const MAX_POINTS_PER_TRACK = 120;
 
 /** @typedef {{ latitude: number, longitude: number, recordedAt?: string }} TrackPoint */
 
@@ -24,41 +28,17 @@ function pathDistanceM(points) {
   return sum;
 }
 
-function offsetPoint(start, distanceM, bearingDeg) {
-  const R = 6371008.8;
-  const δ = distanceM / R;
-  const θ = (bearingDeg * Math.PI) / 180;
-  const φ1 = (start.latitude * Math.PI) / 180;
-  const λ1 = (start.longitude * Math.PI) / 180;
-  const sinφ2 = Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ);
-  const φ2 = Math.asin(sinφ2);
-  const λ2 =
-    λ1 +
-    Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * sinφ2);
-  return {
-    latitude: (φ2 * 180) / Math.PI,
-    longitude: (((λ2 * 180) / Math.PI + 540) % 360) - 180,
-  };
-}
-
-/** Synthetic stroll around a center — used until collar telemetry is live. */
-export function buildDemoTrackPoints(center, opts = {}) {
-  const steps = opts.steps ?? 48;
-  const radiusM = opts.radiusM ?? 280;
-  const started = opts.startedAt ? new Date(opts.startedAt) : new Date(Date.now() - 40 * 60 * 1000);
-  const points = [];
-  for (let i = 0; i <= steps; i += 1) {
-    const t = i / steps;
-    const bearing = t * 360 * 1.15 + (opts.phaseDeg ?? 0);
-    const r = radiusM * (0.55 + 0.45 * Math.sin(t * Math.PI * 2));
-    const p = offsetPoint(center, r, bearing);
-    points.push({
-      latitude: p.latitude,
-      longitude: p.longitude,
-      recordedAt: new Date(started.getTime() + t * (opts.durationSec ?? 2400) * 1000).toISOString(),
-    });
+/** Evenly keep first/last + mid samples so uploads stay tiny. */
+export function downsamplePoints(points, maxPoints = MAX_POINTS_PER_TRACK) {
+  if (!points?.length) return [];
+  if (points.length <= maxPoints) return points;
+  const out = [];
+  const last = points.length - 1;
+  for (let i = 0; i < maxPoints; i += 1) {
+    const idx = i === maxPoints - 1 ? last : Math.round((i * last) / (maxPoints - 1));
+    out.push(points[idx]);
   }
-  return points;
+  return out;
 }
 
 function mapTrack(row) {
@@ -73,12 +53,24 @@ function mapTrack(row) {
     durationSec: row.duration_sec,
     steps: row.steps,
     points: row.points || [],
-    source: row.source || 'demo',
+    source: row.source || 'device',
     createdAt: row.created_at,
   };
 }
 
-export function listTracksForUser(userId, { petId, limit = 40 } = {}) {
+function pruneOldestForUser(userId) {
+  let rows = findMany('walks', (w) => w.user_id === userId);
+  if (rows.length <= MAX_TRACKS_PER_USER) return 0;
+  rows.sort((a, b) => String(a.started_at).localeCompare(String(b.started_at)));
+  const overflow = rows.length - MAX_TRACKS_PER_USER;
+  let removed = 0;
+  for (let i = 0; i < overflow; i += 1) {
+    removed += removeById('walks', rows[i].id);
+  }
+  return removed;
+}
+
+export function listTracksForUser(userId, { petId, limit = MAX_TRACKS_PER_USER } = {}) {
   let rows = findMany('walks', (w) => w.user_id === userId);
   if (petId) {
     rows = rows.filter((w) => w.pet_id === petId);
@@ -100,15 +92,17 @@ export function createTrack({
   startedAt,
   endedAt,
   steps,
-  source = 'api',
+  source = 'device',
 }) {
-  const cleaned = (points || [])
-    .map((p) => ({
-      latitude: Number(p.latitude),
-      longitude: Number(p.longitude),
-      recordedAt: p.recordedAt || p.t || null,
-    }))
-    .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+  const cleaned = downsamplePoints(
+    (points || [])
+      .map((p) => ({
+        latitude: Number(p.latitude),
+        longitude: Number(p.longitude),
+        recordedAt: p.recordedAt || p.t || null,
+      }))
+      .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)),
+  );
 
   if (cleaned.length < 2) {
     throw new Error('track_needs_points');
@@ -117,7 +111,7 @@ export function createTrack({
   const start = startedAt || cleaned[0].recordedAt || nowIso();
   const end = endedAt || cleaned[cleaned.length - 1].recordedAt || nowIso();
   const durationSec = Math.max(
-    60,
+    30,
     Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000),
   );
   const distanceM = Math.round(pathDistanceM(cleaned));
@@ -137,56 +131,21 @@ export function createTrack({
     created_at: nowIso(),
   };
   insert('walks', row);
+  pruneOldestForUser(userId);
   return mapTrack(row);
 }
 
-/**
- * If the user has no tracks yet, seed 2–3 demo walks near `center`
- * so История перемещений is not empty before collar GPS exists.
- */
-export function ensureDemoTracks(userId, { petId, petName, center }) {
-  const existing = listTracksForUser(userId, { petId, limit: 5 });
-  if (existing.length > 0) return existing;
+export function deleteTrackForUser(userId, trackId) {
+  const row = findById('walks', trackId);
+  if (!row || row.user_id !== userId) return false;
+  return removeById('walks', trackId) > 0;
+}
 
-  const now = Date.now();
-  const seeds = [
-    {
-      phaseDeg: 20,
-      radiusM: 260,
-      durationSec: 38 * 60,
-      startedAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-      steps: 3780,
-    },
-    {
-      phaseDeg: 140,
-      radiusM: 320,
-      durationSec: 32 * 60,
-      startedAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
-      steps: 3180,
-    },
-    {
-      phaseDeg: 250,
-      radiusM: 400,
-      durationSec: 41 * 60,
-      startedAt: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
-      steps: 4050,
-    },
-  ];
-
-  return seeds.map((seed) => {
-    const points = buildDemoTrackPoints(center, seed);
-    const endedAt = new Date(
-      new Date(seed.startedAt).getTime() + seed.durationSec * 1000,
-    ).toISOString();
-    return createTrack({
-      userId,
-      petId,
-      petName,
-      points,
-      startedAt: seed.startedAt,
-      endedAt,
-      steps: seed.steps,
-      source: 'demo',
-    });
+/** Wipe all walks for a user (or only demos) — frees Render Free storage. */
+export function deleteTracksForUser(userId, { onlyDemo = false } = {}) {
+  return removeWhere('walks', (w) => {
+    if (w.user_id !== userId) return false;
+    if (onlyDemo) return w.source === 'demo' || w.source === 'local-demo';
+    return true;
   });
 }

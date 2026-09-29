@@ -10,3 +10,5 @@ export type {
 export { useCollarLocation } from './useCollarLocation';
 export { useGeofenceAlerts } from './useGeofenceAlerts';
 export { usePetTracks } from './usePetTracks';
+export { useWalkRecordingActions, useWalkRecordingController } from './useWalkRecording';
+export { useWalkRecordingStore } from './walkRecordingStore';

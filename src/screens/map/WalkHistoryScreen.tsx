@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { PetTrack } from '../../api/tracks';
+import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { MAP_ENGINE } from '../../config/features';
 import { useCollarLocation, usePetTracks } from '../../location';
@@ -88,23 +89,6 @@ type TimelineSection = {
   events: TimelineEvent[];
 };
 
-const TIMELINE: TimelineSection[] = [
-  {
-    day: 'Сегодня',
-    events: [
-      { id: 't1', when: '00:00 — сейчас', text: 'в зоне энергосбережения: Дом', kind: 'home' },
-    ],
-  },
-  {
-    day: 'Вчера',
-    events: [
-      { id: 't2', when: '23:06 — 23:59', text: 'в зоне энергосбережения: Дом', kind: 'home' },
-      { id: 't3', when: '16:34 — 22:26', text: 'в зоне энергосбережения: Дом', kind: 'home' },
-      { id: 't4', when: '15:05', text: 'достиг цели активности за день!', kind: 'goal' },
-    ],
-  },
-];
-
 function dayLabelForIso(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'Прогулки';
@@ -133,13 +117,17 @@ function buildTimelineFromTracks(tracks: PetTrack[]): TimelineSection[] {
   }
 
   const fromTracks = Array.from(sections.entries()).map(([day, events]) => ({ day, events }));
-  if (fromTracks.length === 0) return TIMELINE;
-  return [...fromTracks, ...TIMELINE.filter((section) => !sections.has(section.day))];
+  return fromTracks;
 }
 
-function trackCamera(track: PetTrack | undefined): MapCamera {
+function trackCamera(track: PetTrack | undefined, fallbackCenter?: { latitude: number; longitude: number }): MapCamera {
   const pts = track?.points ?? [];
-  if (pts.length === 0) return mapConfig.defaultCamera;
+  if (pts.length === 0) {
+    return {
+      center: fallbackCenter ?? mapConfig.defaultCamera.center,
+      zoom: 14.5,
+    };
+  }
   const mid = pts[Math.floor(pts.length / 2)] ?? pts[0]!;
   return { center: { latitude: mid.latitude, longitude: mid.longitude }, zoom: 14.5 };
 }
@@ -147,10 +135,9 @@ function trackCamera(track: PetTrack | undefined): MapCamera {
 export function WalkHistoryScreen({ navigation }: Props) {
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
-  const { tracks, loading, source, reload } = usePetTracks({
+  const { tracks, loading, source, reload, removeTrack, clearAll } = usePetTracks({
     petId: pet.id,
     petName: pet.name,
-    center: point,
   });
 
   const [tab, setTab] = useState<TabId>('location');
@@ -158,13 +145,16 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const [sliderProgress, setSliderProgress] = useState(rangeToProgress('24h'));
   const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
   const [sheetWalkId, setSheetWalkId] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [dayOffset, setDayOffset] = useState(0);
   const [followKey, setFollowKey] = useState(0);
 
   useEffect(() => {
-    if (tracks[0] && !activeWalkId) {
+    if (tracks[0] && (!activeWalkId || !tracks.some((t) => t.id === activeWalkId))) {
       setActiveWalkId(tracks[0].id);
     }
+    if (tracks.length === 0) setActiveWalkId(null);
   }, [tracks, activeWalkId]);
 
   const activeTrack = tracks.find((item) => item.id === activeWalkId) ?? tracks[0];
@@ -172,7 +162,10 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const dateLabel = dayOffset === 0 ? 'Сегодня' : dayOffset === 1 ? 'Вчера' : `${dayOffset} дн. назад`;
   const timeline = useMemo(() => buildTimelineFromTracks(tracks), [tracks]);
 
-  const camera = useMemo(() => trackCamera(activeTrack), [activeTrack]);
+  const camera = useMemo(
+    () => trackCamera(activeTrack, point ?? undefined),
+    [activeTrack, point],
+  );
   const polylines = useMemo<MapPolyline[]>(() => {
     if (!activeTrack?.points?.length) return [];
     return [
@@ -188,9 +181,10 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const markers = useMemo<MapMarker[]>(() => {
     const pts = activeTrack?.points ?? [];
     const end = pts[pts.length - 1];
-    if (!end) return [];
-    return [{ id: 'walk-end', coordinate: end, kind: 'pet' }];
-  }, [activeTrack]);
+    if (end) return [{ id: 'walk-end', coordinate: end, kind: 'pet' }];
+    if (point) return [{ id: 'pet', coordinate: point, kind: 'pet' }];
+    return [];
+  }, [activeTrack, point]);
 
   const selectRange = (next: RangeId) => {
     setRange(next);
@@ -208,8 +202,35 @@ export function WalkHistoryScreen({ navigation }: Props) {
     setFollowKey((k) => k + 1);
   };
 
-  const showMapSpinner = loading && tracks.length === 0;
+  const onDeleteTrack = async () => {
+    if (!sheetTrack || busy) return;
+    setBusy(true);
+    try {
+      await removeTrack(sheetTrack.id);
+      setSheetWalkId(null);
+    } catch {
+      /* keep sheet open; error surfaces via empty reload */
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  };
 
+  const onClearAll = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await clearAll(false);
+      setConfirmClear(false);
+      setSheetWalkId(null);
+    } catch {
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const showMapSpinner = loading && tracks.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -266,7 +287,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
               <Text style={styles.mapBubbleText}>
                 {activeTrack
                   ? `${formatWhen(activeTrack.startedAt)} · ${formatKm(activeTrack.distanceM)}`
-                  : `${dateLabel} · маршрут`}
+                  : 'Нет сохранённых прогулок'}
               </Text>
             </View>
             <View style={styles.mapTools}>
@@ -282,10 +303,12 @@ export function WalkHistoryScreen({ navigation }: Props) {
           <View style={styles.controls}>
             <Text style={styles.sourceHint}>
               {loading
-                ? 'Подключаемся к серверу маршрутов…'
+                ? 'Загружаем маршруты…'
                 : source === 'api'
-                  ? 'Маршруты с сервера Tailio'
-                  : 'Локальные демо-маршруты (сервер спит или недоступен)'}
+                  ? 'Реальные прогулки с сервера Tailio (до 12 шт.)'
+                  : source === 'offline'
+                    ? 'Сервер недоступен — история пока пуста'
+                    : 'Пока пусто: на карте нажмите «Начать прогулку», затем «Стоп»'}
             </Text>
 
             <View style={styles.dateRow}>
@@ -297,7 +320,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                 <Text style={styles.dateMeta}>
                   {activeTrack
                     ? `${formatWhen(activeTrack.startedAt)} — ${formatWhen(activeTrack.endedAt)} · ${range}`
-                    : `08:51 — 23:21 · ${range}`}
+                    : `Нет данных · ${range}`}
                 </Text>
               </View>
               <Pressable
@@ -326,7 +349,25 @@ export function WalkHistoryScreen({ navigation }: Props) {
               ))}
             </View>
 
-            <Text style={styles.listTitle}>Прогулки</Text>
+            <View style={styles.listHead}>
+              <Text style={styles.listTitle}>Прогулки</Text>
+              {tracks.length > 0 ? (
+                <Pressable onPress={() => setConfirmClear(true)} hitSlop={8}>
+                  <Text style={styles.clearLink}>Очистить всё</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {tracks.length === 0 && !loading ? (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>
+                  Запишите маршрут кнопкой «Начать прогулку» на вкладке «Карта». Старые демо-круги больше не
+                  создаются.
+                </Text>
+                <Button label="На карту" onPress={() => navigation.navigate('Main', { screen: 'Map' })} />
+              </View>
+            ) : null}
+
             {tracks.map((item) => {
               const active = item.id === activeTrack?.id;
               return (
@@ -341,8 +382,8 @@ export function WalkHistoryScreen({ navigation }: Props) {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.when}>{formatWhen(item.startedAt)}</Text>
                     <Text style={styles.meta}>
-                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)} · {item.steps} шагов ·{' '}
-                      {item.points.length} точек
+                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)} · {item.points.length} точек
+                      {item.source === 'demo' ? ' · демо' : ''}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -353,6 +394,9 @@ export function WalkHistoryScreen({ navigation }: Props) {
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.timeline} showsVerticalScrollIndicator={false}>
+          {timeline.length === 0 ? (
+            <Text style={styles.emptyText}>Лента появится после первой сохранённой прогулки.</Text>
+          ) : null}
           {timeline.map((section) => (
             <View key={section.day} style={styles.dayBlock}>
               <View style={styles.dayHead}>
@@ -367,8 +411,6 @@ export function WalkHistoryScreen({ navigation }: Props) {
                     if (event.kind === 'walk' && event.trackId) {
                       setActiveWalkId(event.trackId);
                       setFollowKey((k) => k + 1);
-                      setTab('location');
-                    } else if (event.kind === 'walk') {
                       setTab('location');
                     }
                   }}
@@ -390,20 +432,28 @@ export function WalkHistoryScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
-      <InAppSheet visible={Boolean(sheetTrack)} onClose={() => setSheetWalkId(null)}>
+      <InAppSheet visible={Boolean(sheetTrack) && !confirmClear} onClose={() => setSheetWalkId(null)}>
         <Text style={styles.sheetTitle}>{sheetTrack ? formatWhen(sheetTrack.startedAt) : ''}</Text>
         <Text style={styles.sheetCopy}>
           {sheetTrack
-            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)} · ${sheetTrack.steps} шагов`
+            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)} · ${sheetTrack.points.length} точек`
             : ''}
         </Text>
         <Text style={styles.sheetCopy}>
-          Маршрут из {sheetTrack?.points.length ?? 0} GPS-точек
-          {sheetTrack?.source === 'demo' || sheetTrack?.source === 'local-demo'
-            ? ' (демо до телеметрии ошейника)'
-            : ''}
-          .
+          {sheetTrack?.source === 'demo'
+            ? 'Это старое демо — лучше удалить, чтобы не занимать место на Render Free.'
+            : 'Реальный маршрут с GPS устройства.'}
         </Text>
+        <Button label={busy ? 'Удаляем…' : 'Удалить эту прогулку'} variant="danger" onPress={() => void onDeleteTrack()} />
+      </InAppSheet>
+
+      <InAppSheet visible={confirmClear} onClose={() => setConfirmClear(false)}>
+        <Text style={styles.sheetTitle}>Очистить всю историю?</Text>
+        <Text style={styles.sheetCopy}>
+          Все сохранённые прогулки удалятся с сервера. Так освобождается место на бесплатном Render.
+        </Text>
+        <Button label={busy ? 'Удаляем…' : 'Удалить всё'} variant="danger" onPress={() => void onClearAll()} />
+        <Button label="Отмена" variant="ghost" onPress={() => setConfirmClear(false)} />
       </InAppSheet>
     </SafeAreaView>
   );
@@ -616,6 +666,25 @@ const styles = StyleSheet.create({
     ...type.subtitle,
     color: colors.ink,
     marginTop: 4,
+  },
+  listHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  clearLink: {
+    ...type.caption,
+    color: colors.red,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  emptyBox: {
+    gap: 12,
+    paddingVertical: 8,
+  },
+  emptyText: {
+    ...type.body,
+    color: colors.inkSoft,
   },
   walkCard: {
     flexDirection: 'row',

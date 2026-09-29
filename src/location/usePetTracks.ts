@@ -1,51 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { upsertChatUser } from '../api/chat';
-import { fetchPetTracks, type PetTrack } from '../api/tracks';
-import { mapConfig, offsetPoint, type MapLatLng } from '../map';
+import {
+  clearPetTracks,
+  deletePetTrack,
+  fetchPetTracks,
+  type PetTrack,
+} from '../api/tracks';
 import { useAppStore } from '../store/useAppStore';
-
-function buildLocalDemoTracks(center: MapLatLng, petName: string): PetTrack[] {
-  const now = Date.now();
-  const make = (
-    id: string,
-    phaseDeg: number,
-    radiusM: number,
-    durationSec: number,
-    startedAgoMs: number,
-    steps: number,
-  ): PetTrack => {
-    const startedAt = new Date(now - startedAgoMs).toISOString();
-    const points: MapLatLng[] = [];
-    const n = 40;
-    for (let i = 0; i <= n; i += 1) {
-      const t = i / n;
-      const bearing = t * 360 * 1.15 + phaseDeg;
-      const r = radiusM * (0.55 + 0.45 * Math.sin(t * Math.PI * 2));
-      points.push(offsetPoint(center, r, bearing));
-    }
-    const endedAt = new Date(now - startedAgoMs + durationSec * 1000).toISOString();
-    return {
-      id,
-      userId: 'local',
-      petName,
-      startedAt,
-      endedAt,
-      distanceM: Math.round(radiusM * 4.2),
-      durationSec,
-      steps,
-      points,
-      source: 'local-demo',
-      createdAt: startedAt,
-    };
-  };
-
-  return [
-    make('local-1', 20, 260, 38 * 60, 2 * 60 * 60 * 1000, 3780),
-    make('local-2', 140, 320, 32 * 60, 10 * 60 * 60 * 1000, 3180),
-    make('local-3', 250, 400, 41 * 60, 28 * 60 * 60 * 1000, 4050),
-  ];
-}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -66,7 +28,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 export function usePetTracks(options: {
   petId: string;
   petName: string;
-  center?: MapLatLng | null;
   enabled?: boolean;
 }) {
   const enabled = options.enabled !== false;
@@ -74,87 +35,76 @@ export function usePetTracks(options: {
   const ownerName = useAppStore((s) => s.ownerName);
   const ownerCity = useAppStore((s) => s.ownerCity);
 
-  const latestCenterRef = useRef<MapLatLng>(options.center ?? mapConfig.defaultCamera.center);
-  if (options.center) {
-    latestCenterRef.current = options.center;
-  }
-
-  const [tracks, setTracks] = useState<PetTrack[]>(() =>
-    buildLocalDemoTracks(latestCenterRef.current, options.petName),
-  );
+  const [tracks, setTracks] = useState<PetTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'api' | 'local-demo'>('local-demo');
-  const requestIdRef = useRef(0);
-  const hasLocalSeedRef = useRef(false);
+  const [source, setSource] = useState<'api' | 'empty' | 'offline'>('empty');
+
+  const withAuth = useCallback(async () => {
+    if (!email) throw new Error('no_email');
+    return withTimeout(
+      upsertChatUser({
+        email,
+        name: ownerName,
+        city: ownerCity,
+        pet: { id: options.petId, name: options.petName },
+      }),
+      25_000,
+      'auth_timeout',
+    );
+  }, [email, options.petId, options.petName, ownerCity, ownerName]);
 
   const reload = useCallback(async () => {
     if (!enabled) {
       setLoading(false);
       return;
     }
-
-    const requestId = ++requestIdRef.current;
-    const seed = latestCenterRef.current;
-    if (!hasLocalSeedRef.current) {
-      setTracks(buildLocalDemoTracks(seed, options.petName));
-      setSource('local-demo');
-      hasLocalSeedRef.current = true;
-    }
     setLoading(true);
     setError(null);
-
     try {
-      if (!email) {
-        throw new Error('no_email');
-      }
-
-      const auth = await withTimeout(
-        upsertChatUser({
-          email,
-          name: ownerName,
-          city: ownerCity,
-          pet: { id: options.petId, name: options.petName },
-        }),
-        25_000,
-        'auth_timeout',
-      );
-
+      const auth = await withAuth();
       const list = await withTimeout(
-        fetchPetTracks({
-          token: auth.token,
-          petId: options.petId,
-          petName: options.petName,
-          center: seed,
-        }),
+        fetchPetTracks({ token: auth.token, petId: options.petId }),
         25_000,
         'tracks_timeout',
       );
-
-      if (requestId !== requestIdRef.current) return;
-      if (list.length > 0) {
-        setTracks(list);
-        setSource('api');
-      } else {
-        setTracks(buildLocalDemoTracks(seed, options.petName));
-        setSource('local-demo');
-      }
-      setError(null);
+      setTracks(list);
+      setSource(list.length > 0 ? 'api' : 'empty');
     } catch (err) {
-      if (requestId !== requestIdRef.current) return;
-      setTracks(buildLocalDemoTracks(seed, options.petName));
-      setSource('local-demo');
+      setTracks([]);
+      setSource('offline');
       setError(err instanceof Error ? err.message : 'tracks_failed');
     } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  }, [email, enabled, options.petId, options.petName, ownerCity, ownerName]);
+  }, [enabled, options.petId, withAuth]);
+
+  const removeTrack = useCallback(
+    async (trackId: string) => {
+      const auth = await withAuth();
+      await deletePetTrack({ token: auth.token, trackId });
+      setTracks((prev) => prev.filter((item) => item.id !== trackId));
+    },
+    [withAuth],
+  );
+
+  const clearAll = useCallback(
+    async (onlyDemo = false) => {
+      const auth = await withAuth();
+      await clearPetTracks({ token: auth.token, onlyDemo });
+      if (onlyDemo) {
+        setTracks((prev) => prev.filter((item) => item.source !== 'demo' && item.source !== 'local-demo'));
+      } else {
+        setTracks([]);
+        setSource('empty');
+      }
+    },
+    [withAuth],
+  );
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  return { tracks, loading, error, source, reload };
+  return { tracks, loading, error, source, reload, removeTrack, clearAll };
 }

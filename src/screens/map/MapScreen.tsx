@@ -12,7 +12,8 @@ import { PetAvatar } from '../../components/pet/PetAvatar';
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { MAP_ENGINE } from '../../config/features';
-import { useCollarLocation } from '../../location';
+import { useCollarLocation, useWalkRecordingActions } from '../../location';
+import { useWalkRecordingStore } from '../../location/walkRecordingStore';
 import {
   MapCanvas,
   boundsToPolygon,
@@ -57,6 +58,17 @@ export function MapScreen() {
     petId: pet.id,
     collarId: pet.collarId,
   });
+  const {
+    active: walkActive,
+    uploading: walkUploading,
+    points: walkPoints,
+    startedAt: walkStartedAt,
+    lastError: walkError,
+    startWalk,
+    finishWalk,
+  } = useWalkRecordingActions();
+  const walkPointCount = useWalkRecordingStore((s) => s.points.length);
+  const [walkHint, setWalkHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [sosPhase, setSosPhase] = useState<SosPhase>('off');
   const [actionSheet, setActionSheet] = useState<SosActionSheet>(null);
@@ -109,9 +121,33 @@ export function MapScreen() {
   }, [geozones, sosActive]);
 
   const polylines = useMemo<MapPolyline[]>(() => {
-    if (!sosActive) return [];
-    return [buildApproachPolyline(center, 'sos-trail')];
-  }, [center, sosActive]);
+    if (sosActive) return [buildApproachPolyline(center, 'sos-trail')];
+    if (walkActive && walkPoints.length >= 2) {
+      return [
+        {
+          id: 'live-walk',
+          coordinates: walkPoints,
+          color: colors.purple,
+          width: 4,
+        },
+      ];
+    }
+    return [];
+  }, [center, sosActive, walkActive, walkPoints]);
+
+  const onToggleWalk = async () => {
+    if (walkUploading) return;
+    if (!walkActive) {
+      startWalk({ petId: pet.id, petName: pet.name, point });
+      setWalkHint('Запись идёт. Можно свернуть карту — в приложении трек продолжит писаться. Закрытие вкладки браузера остановит запись.');
+      return;
+    }
+    const track = await finishWalk();
+    if (track) {
+      setWalkHint(`Сохранено: ${(track.distanceM / 1000).toFixed(1)} км · ${track.points.length} точек`);
+      setTimeout(() => setWalkHint(null), 4000);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -284,6 +320,21 @@ export function MapScreen() {
           </View>
         ) : null}
 
+        {walkActive && !sosActive ? (
+          <View style={styles.recToast}>
+            <View style={styles.recDot} />
+            <Text style={styles.recToastText}>
+              Запись · {walkPointCount} тчк.
+              {walkStartedAt
+                ? ` · с ${new Date(walkStartedAt).toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}`
+                : ''}
+            </Text>
+          </View>
+        ) : null}
+
         {!LIVE_MAP && !sosActive ? <View style={styles.zone} /> : null}
 
         {!LIVE_MAP && sosActive ? (
@@ -354,6 +405,25 @@ export function MapScreen() {
 
         {expanded && !sosActive ? (
           <View style={styles.actions}>
+            <Button
+              label={
+                walkUploading
+                  ? 'Сохраняем…'
+                  : walkActive
+                    ? 'Стоп · сохранить прогулку'
+                    : 'Начать прогулку'
+              }
+              variant={walkActive ? 'danger' : 'primary'}
+              disabled={walkUploading}
+              onPress={() => void onToggleWalk()}
+            />
+            {walkError || walkHint ? (
+              <Text style={styles.walkHint}>{walkError || walkHint}</Text>
+            ) : (
+              <Text style={styles.walkHint}>
+                GPS пишется на сервер только после «Стоп». На Pages запись идёт, пока открыто приложение.
+              </Text>
+            )}
             <Pressable style={styles.sosAction} onPress={startSos}>
               <View style={[styles.miniIcon, { backgroundColor: '#FDECEC' }]}>
                 <Ionicons name="notifications" size={18} color={colors.red} />
@@ -579,6 +649,37 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.ink,
     flexShrink: 1,
+  },
+  recToast: {
+    position: 'absolute',
+    top: 96,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.paper,
+    borderRadius: radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    zIndex: 3,
+    borderWidth: 1,
+    borderColor: colors.purpleSoft,
+  },
+  recDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.red,
+  },
+  recToastText: {
+    ...type.caption,
+    color: colors.ink,
+  },
+  walkHint: {
+    ...type.caption,
+    color: colors.muted,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   zone: {
     position: 'absolute',
