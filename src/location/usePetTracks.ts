@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { upsertChatUser } from '../api/chat';
 import { fetchPetTracks, type PetTrack } from '../api/tracks';
@@ -47,60 +47,110 @@ function buildLocalDemoTracks(center: MapLatLng, petName: string): PetTrack[] {
   ];
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(label)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 export function usePetTracks(options: {
   petId: string;
   petName: string;
   center?: MapLatLng | null;
   enabled?: boolean;
 }) {
+  const enabled = options.enabled !== false;
   const email = useAppStore((s) => s.currentEmail);
   const ownerName = useAppStore((s) => s.ownerName);
   const ownerCity = useAppStore((s) => s.ownerCity);
-  const [tracks, setTracks] = useState<PetTrack[]>([]);
+
+  const latestCenterRef = useRef<MapLatLng>(options.center ?? mapConfig.defaultCamera.center);
+  if (options.center) {
+    latestCenterRef.current = options.center;
+  }
+
+  const [tracks, setTracks] = useState<PetTrack[]>(() =>
+    buildLocalDemoTracks(latestCenterRef.current, options.petName),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<'api' | 'local-demo'>('local-demo');
-
-  const center = options.center ?? mapConfig.defaultCamera.center;
+  const requestIdRef = useRef(0);
+  const hasLocalSeedRef = useRef(false);
 
   const reload = useCallback(async () => {
-    if (!options.enabled) return;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+    const seed = latestCenterRef.current;
+    if (!hasLocalSeedRef.current) {
+      setTracks(buildLocalDemoTracks(seed, options.petName));
+      setSource('local-demo');
+      hasLocalSeedRef.current = true;
+    }
     setLoading(true);
     setError(null);
+
     try {
       if (!email) {
         throw new Error('no_email');
       }
-      const auth = await upsertChatUser({
-        email,
-        name: ownerName,
-        city: ownerCity,
-        pet: { id: options.petId, name: options.petName },
-      });
-      const list = await fetchPetTracks({
-        token: auth.token,
-        petId: options.petId,
-        petName: options.petName,
-        center,
-      });
-      setTracks(list);
-      setSource('api');
+
+      const auth = await withTimeout(
+        upsertChatUser({
+          email,
+          name: ownerName,
+          city: ownerCity,
+          pet: { id: options.petId, name: options.petName },
+        }),
+        25_000,
+        'auth_timeout',
+      );
+
+      const list = await withTimeout(
+        fetchPetTracks({
+          token: auth.token,
+          petId: options.petId,
+          petName: options.petName,
+          center: seed,
+        }),
+        25_000,
+        'tracks_timeout',
+      );
+
+      if (requestId !== requestIdRef.current) return;
+      if (list.length > 0) {
+        setTracks(list);
+        setSource('api');
+      } else {
+        setTracks(buildLocalDemoTracks(seed, options.petName));
+        setSource('local-demo');
+      }
+      setError(null);
     } catch (err) {
-      setTracks(buildLocalDemoTracks(center, options.petName));
+      if (requestId !== requestIdRef.current) return;
+      setTracks(buildLocalDemoTracks(seed, options.petName));
       setSource('local-demo');
       setError(err instanceof Error ? err.message : 'tracks_failed');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [
-    center,
-    email,
-    options.enabled,
-    options.petId,
-    options.petName,
-    ownerCity,
-    ownerName,
-  ]);
+  }, [email, enabled, options.petId, options.petName, ownerCity, ownerName]);
 
   useEffect(() => {
     void reload();

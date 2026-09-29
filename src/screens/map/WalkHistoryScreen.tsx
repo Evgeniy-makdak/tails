@@ -75,23 +75,67 @@ function RangeSlider({ value, onChange }: { value: number; onChange: (next: numb
   );
 }
 
-const TIMELINE = [
+type TimelineEvent = {
+  id: string;
+  when: string;
+  text: string;
+  kind: 'home' | 'goal' | 'walk';
+  trackId?: string;
+};
+
+type TimelineSection = {
+  day: string;
+  events: TimelineEvent[];
+};
+
+const TIMELINE: TimelineSection[] = [
   {
     day: 'Сегодня',
     events: [
-      { id: 't1', when: '00:00 — сейчас', text: 'в зоне энергосбережения: Дом', kind: 'home' as const },
+      { id: 't1', when: '00:00 — сейчас', text: 'в зоне энергосбережения: Дом', kind: 'home' },
     ],
   },
   {
     day: 'Вчера',
     events: [
-      { id: 't2', when: '23:06 — 23:59', text: 'в зоне энергосбережения: Дом', kind: 'home' as const },
-      { id: 't3', when: '16:34 — 22:26', text: 'в зоне энергосбережения: Дом', kind: 'home' as const },
-      { id: 't4', when: '15:05', text: 'достиг цели активности за день!', kind: 'goal' as const },
-      { id: 't5', when: '07:30 — 08:12', text: 'прогулка · 2.4 км · 3180 шагов', kind: 'walk' as const },
+      { id: 't2', when: '23:06 — 23:59', text: 'в зоне энергосбережения: Дом', kind: 'home' },
+      { id: 't3', when: '16:34 — 22:26', text: 'в зоне энергосбережения: Дом', kind: 'home' },
+      { id: 't4', when: '15:05', text: 'достиг цели активности за день!', kind: 'goal' },
     ],
   },
 ];
+
+function dayLabelForIso(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Прогулки';
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startThat = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((startToday - startThat) / 86_400_000);
+  if (dayDiff === 0) return 'Сегодня';
+  if (dayDiff === 1) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
+
+function buildTimelineFromTracks(tracks: PetTrack[]): TimelineSection[] {
+  const sections = new Map<string, TimelineEvent[]>();
+  for (const track of tracks) {
+    const day = dayLabelForIso(track.startedAt);
+    const list = sections.get(day) ?? [];
+    list.push({
+      id: `walk-${track.id}`,
+      when: `${formatWhen(track.startedAt)} — ${formatWhen(track.endedAt)}`,
+      text: `прогулка · ${formatKm(track.distanceM)} · ${track.steps} шагов`,
+      kind: 'walk',
+      trackId: track.id,
+    });
+    sections.set(day, list);
+  }
+
+  const fromTracks = Array.from(sections.entries()).map(([day, events]) => ({ day, events }));
+  if (fromTracks.length === 0) return TIMELINE;
+  return [...fromTracks, ...TIMELINE.filter((section) => !sections.has(section.day))];
+}
 
 function trackCamera(track: PetTrack | undefined): MapCamera {
   const pts = track?.points ?? [];
@@ -126,6 +170,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
   const activeTrack = tracks.find((item) => item.id === activeWalkId) ?? tracks[0];
   const sheetTrack = tracks.find((item) => item.id === sheetWalkId) ?? null;
   const dateLabel = dayOffset === 0 ? 'Сегодня' : dayOffset === 1 ? 'Вчера' : `${dayOffset} дн. назад`;
+  const timeline = useMemo(() => buildTimelineFromTracks(tracks), [tracks]);
 
   const camera = useMemo(() => trackCamera(activeTrack), [activeTrack]);
   const polylines = useMemo<MapPolyline[]>(() => {
@@ -162,6 +207,9 @@ export function WalkHistoryScreen({ navigation }: Props) {
     setSheetWalkId(id);
     setFollowKey((k) => k + 1);
   };
+
+  const showMapSpinner = loading && tracks.length === 0;
+
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -204,9 +252,14 @@ export function WalkHistoryScreen({ navigation }: Props) {
             ) : (
               <View style={[styles.map, { backgroundColor: '#C9D6C4' }]} />
             )}
-            {loading ? (
+            {showMapSpinner ? (
               <View style={styles.mapLoading}>
                 <ActivityIndicator color={colors.purple} />
+              </View>
+            ) : null}
+            {loading && tracks.length > 0 ? (
+              <View style={styles.mapSync} pointerEvents="none">
+                <ActivityIndicator size="small" color={colors.purple} />
               </View>
             ) : null}
             <View style={styles.mapBubble} pointerEvents="none">
@@ -221,16 +274,18 @@ export function WalkHistoryScreen({ navigation }: Props) {
                 <Ionicons name="locate-outline" size={16} color={colors.purple} />
               </Pressable>
               <Pressable style={styles.toolBtn} onPress={() => void reload()}>
-                <Ionicons name="layers-outline" size={16} color={colors.ink} />
+                <Ionicons name="refresh-outline" size={16} color={colors.ink} />
               </Pressable>
             </View>
           </View>
 
           <View style={styles.controls}>
             <Text style={styles.sourceHint}>
-              {source === 'api'
-                ? 'Маршруты с сервера Tailio (Render)'
-                : 'Демо-маршруты офлайн — сервер недоступен'}
+              {loading
+                ? 'Подключаемся к серверу маршрутов…'
+                : source === 'api'
+                  ? 'Маршруты с сервера Tailio'
+                  : 'Локальные демо-маршруты (сервер спит или недоступен)'}
             </Text>
 
             <View style={styles.dateRow}>
@@ -298,7 +353,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.timeline} showsVerticalScrollIndicator={false}>
-          {TIMELINE.map((section) => (
+          {timeline.map((section) => (
             <View key={section.day} style={styles.dayBlock}>
               <View style={styles.dayHead}>
                 <Ionicons name="calendar" size={16} color={colors.purple} />
@@ -309,7 +364,11 @@ export function WalkHistoryScreen({ navigation }: Props) {
                   key={event.id}
                   style={styles.eventRow}
                   onPress={() => {
-                    if (event.kind === 'walk') {
+                    if (event.kind === 'walk' && event.trackId) {
+                      setActiveWalkId(event.trackId);
+                      setFollowKey((k) => k + 1);
+                      setTab('location');
+                    } else if (event.kind === 'walk') {
                       setTab('location');
                     }
                   }}
@@ -418,6 +477,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  mapSync: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.paper,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mapBubble: {
     position: 'absolute',

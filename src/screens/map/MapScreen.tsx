@@ -53,7 +53,7 @@ export function MapScreen() {
   const pet = useActivePet();
   const updatePet = useAppStore((state) => state.updatePet);
   const geozones = useAppStore((state) => state.geozones);
-  const { coordsLabel, point, source } = useCollarLocation({
+  const { coordsLabel, point, source, snapshot } = useCollarLocation({
     petId: pet.id,
     collarId: pet.collarId,
   });
@@ -168,6 +168,13 @@ export function MapScreen() {
   const continueSearch = () => setSosPhase('continue');
   const stopSearch = () => setSosPhase('off');
   const liveCoords = coordsLabel ?? `${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)}`;
+  const updatedLabel = snapshot?.point.updatedAt
+    ? new Date(snapshot.point.updatedAt).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : null;
   const notifyPreview = buildNotifyMessage(pet.name, liveCoords);
   const sourceHint =
     source === 'device' ? 'GPS устройства' : source === 'api' ? 'Ошейник' : 'Демо';
@@ -262,6 +269,7 @@ export function MapScreen() {
           <Text style={styles.coords}>
             {liveCoords}
             {LIVE_MAP ? ` · ${sourceHint}` : ''}
+            {updatedLabel ? ` · ${updatedLabel}` : ''}
           </Text>
         </SafeAreaView>
 
