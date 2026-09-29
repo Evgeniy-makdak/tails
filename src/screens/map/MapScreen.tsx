@@ -139,13 +139,13 @@ export function MapScreen() {
     if (walkUploading) return;
     if (!walkActive) {
       startWalk({ petId: pet.id, petName: pet.name, point });
-      setWalkHint('Запись идёт. Можно свернуть карту — в приложении трек продолжит писаться. Закрытие вкладки браузера остановит запись.');
+      setWalkHint(null);
       return;
     }
     const track = await finishWalk();
     if (track) {
-      setWalkHint(`Сохранено: ${(track.distanceM / 1000).toFixed(1)} км · ${track.points.length} точек`);
-      setTimeout(() => setWalkHint(null), 4000);
+      setWalkHint(`Прогулка сохранена · ${(track.distanceM / 1000).toFixed(1)} км`);
+      setTimeout(() => setWalkHint(null), 3500);
     }
   };
 
@@ -213,7 +213,7 @@ export function MapScreen() {
     : null;
   const notifyPreview = buildNotifyMessage(pet.name, liveCoords);
   const sourceHint =
-    source === 'device' ? 'GPS устройства' : source === 'api' ? 'Ошейник' : 'Демо';
+    source === 'device' ? 'Live' : source === 'api' ? 'Ошейник' : null;
 
   const zoomIn = () => {
     if (LIVE_MAP) {
@@ -304,7 +304,7 @@ export function MapScreen() {
           </View>
           <Text style={styles.coords}>
             {liveCoords}
-            {LIVE_MAP ? ` · ${sourceHint}` : ''}
+            {LIVE_MAP && sourceHint ? ` · ${sourceHint}` : ''}
             {updatedLabel ? ` · ${updatedLabel}` : ''}
           </Text>
         </SafeAreaView>
@@ -323,15 +323,7 @@ export function MapScreen() {
         {walkActive && !sosActive ? (
           <View style={styles.recToast}>
             <View style={styles.recDot} />
-            <Text style={styles.recToastText}>
-              Запись · {walkPointCount} тчк.
-              {walkStartedAt
-                ? ` · с ${new Date(walkStartedAt).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}`
-                : ''}
-            </Text>
+            <Text style={styles.recToastText}>Идёт запись прогулки</Text>
           </View>
         ) : null}
 
@@ -410,7 +402,7 @@ export function MapScreen() {
                 walkUploading
                   ? 'Сохраняем…'
                   : walkActive
-                    ? 'Стоп · сохранить прогулку'
+                    ? 'Завершить прогулку'
                     : 'Начать прогулку'
               }
               variant={walkActive ? 'danger' : 'primary'}
@@ -419,11 +411,7 @@ export function MapScreen() {
             />
             {walkError || walkHint ? (
               <Text style={styles.walkHint}>{walkError || walkHint}</Text>
-            ) : (
-              <Text style={styles.walkHint}>
-                GPS пишется на сервер только после «Стоп». На Pages запись идёт, пока открыто приложение.
-              </Text>
-            )}
+            ) : null}
             <Pressable style={styles.sosAction} onPress={startSos}>
               <View style={[styles.miniIcon, { backgroundColor: '#FDECEC' }]}>
                 <Ionicons name="notifications" size={18} color={colors.red} />
@@ -552,7 +540,7 @@ export function MapScreen() {
 
       <InAppSheet visible={actionSheet === 'route'} onClose={() => setActionSheet(null)}>
         <Text style={styles.sheetTitle}>Маршрут</Text>
-        <Text style={styles.sheetCopy}>Демо: маршрут до последней точки {pet.name} построен ({liveCoords}).</Text>
+        <Text style={styles.sheetCopy}>Маршрут до последней точки {pet.name} ({liveCoords}).</Text>
         <Button label="Хорошо" onPress={() => setActionSheet(null)} />
       </InAppSheet>
     </View>

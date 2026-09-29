@@ -135,7 +135,7 @@ function trackCamera(track: PetTrack | undefined, fallbackCenter?: { latitude: n
 export function WalkHistoryScreen({ navigation }: Props) {
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
-  const { tracks, loading, source, reload, removeTrack, clearAll } = usePetTracks({
+  const { tracks, loading, reload, removeTrack, clearAll } = usePetTracks({
     petId: pet.id,
     petName: pet.name,
   });
@@ -287,7 +287,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
               <Text style={styles.mapBubbleText}>
                 {activeTrack
                   ? `${formatWhen(activeTrack.startedAt)} · ${formatKm(activeTrack.distanceM)}`
-                  : 'Нет сохранённых прогулок'}
+                  : 'История прогулок'}
               </Text>
             </View>
             <View style={styles.mapTools}>
@@ -301,16 +301,6 @@ export function WalkHistoryScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.controls}>
-            <Text style={styles.sourceHint}>
-              {loading
-                ? 'Загружаем маршруты…'
-                : source === 'api'
-                  ? 'Реальные прогулки с сервера Tailio (до 12 шт.)'
-                  : source === 'offline'
-                    ? 'Сервер недоступен — история пока пуста'
-                    : 'Пока пусто: на карте нажмите «Начать прогулку», затем «Стоп»'}
-            </Text>
-
             <View style={styles.dateRow}>
               <Pressable onPress={() => setDayOffset((value) => value + 1)} style={styles.dateArrow}>
                 <Ionicons name="chevron-back" size={18} color={colors.ink} />
@@ -320,7 +310,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                 <Text style={styles.dateMeta}>
                   {activeTrack
                     ? `${formatWhen(activeTrack.startedAt)} — ${formatWhen(activeTrack.endedAt)} · ${range}`
-                    : `Нет данных · ${range}`}
+                    : range}
                 </Text>
               </View>
               <Pressable
@@ -353,18 +343,15 @@ export function WalkHistoryScreen({ navigation }: Props) {
               <Text style={styles.listTitle}>Прогулки</Text>
               {tracks.length > 0 ? (
                 <Pressable onPress={() => setConfirmClear(true)} hitSlop={8}>
-                  <Text style={styles.clearLink}>Очистить всё</Text>
+                  <Text style={styles.clearLink}>Удалить все</Text>
                 </Pressable>
               ) : null}
             </View>
 
             {tracks.length === 0 && !loading ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>
-                  Запишите маршрут кнопкой «Начать прогулку» на вкладке «Карта». Старые демо-круги больше не
-                  создаются.
-                </Text>
-                <Button label="На карту" onPress={() => navigation.navigate('Main', { screen: 'Map' })} />
+                <Text style={styles.emptyText}>Пока нет сохранённых прогулок.</Text>
+                <Button label="Начать прогулку" onPress={() => navigation.navigate('Main', { screen: 'Map' })} />
               </View>
             ) : null}
 
@@ -382,8 +369,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.when}>{formatWhen(item.startedAt)}</Text>
                     <Text style={styles.meta}>
-                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)} · {item.points.length} точек
-                      {item.source === 'demo' ? ' · демо' : ''}
+                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -395,7 +381,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
       ) : (
         <ScrollView contentContainerStyle={styles.timeline} showsVerticalScrollIndicator={false}>
           {timeline.length === 0 ? (
-            <Text style={styles.emptyText}>Лента появится после первой сохранённой прогулки.</Text>
+            <Text style={styles.emptyText}>Пока нет событий в ленте.</Text>
           ) : null}
           {timeline.map((section) => (
             <View key={section.day} style={styles.dayBlock}>
@@ -436,23 +422,20 @@ export function WalkHistoryScreen({ navigation }: Props) {
         <Text style={styles.sheetTitle}>{sheetTrack ? formatWhen(sheetTrack.startedAt) : ''}</Text>
         <Text style={styles.sheetCopy}>
           {sheetTrack
-            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)} · ${sheetTrack.points.length} точек`
+            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)}`
             : ''}
         </Text>
-        <Text style={styles.sheetCopy}>
-          {sheetTrack?.source === 'demo'
-            ? 'Это старое демо — лучше удалить, чтобы не занимать место на Render Free.'
-            : 'Реальный маршрут с GPS устройства.'}
-        </Text>
-        <Button label={busy ? 'Удаляем…' : 'Удалить эту прогулку'} variant="danger" onPress={() => void onDeleteTrack()} />
+        <Button
+          label={busy ? 'Удаляем…' : 'Удалить прогулку'}
+          variant="danger"
+          onPress={() => void onDeleteTrack()}
+        />
       </InAppSheet>
 
       <InAppSheet visible={confirmClear} onClose={() => setConfirmClear(false)}>
-        <Text style={styles.sheetTitle}>Очистить всю историю?</Text>
-        <Text style={styles.sheetCopy}>
-          Все сохранённые прогулки удалятся с сервера. Так освобождается место на бесплатном Render.
-        </Text>
-        <Button label={busy ? 'Удаляем…' : 'Удалить всё'} variant="danger" onPress={() => void onClearAll()} />
+        <Text style={styles.sheetTitle}>Удалить все прогулки?</Text>
+        <Text style={styles.sheetCopy}>История перемещений будет очищена. Это нельзя отменить.</Text>
+        <Button label={busy ? 'Удаляем…' : 'Удалить все'} variant="danger" onPress={() => void onClearAll()} />
         <Button label="Отмена" variant="ghost" onPress={() => setConfirmClear(false)} />
       </InAppSheet>
     </SafeAreaView>

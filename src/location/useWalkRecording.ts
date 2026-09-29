@@ -70,11 +70,11 @@ export function useWalkRecordingActions() {
     const snapshot = stopLocal();
     if (!snapshot) return null;
     if (snapshot.points.length < 2) {
-      setError('Слишком короткий трек — пройдите ещё немного и нажмите «Стоп».');
+      setError('Слишком короткая прогулка — пройдите ещё немного.');
       return null;
     }
     if (!email) {
-      setError('Нужен вход в аккаунт, чтобы сохранить маршрут на сервер.');
+      setError('Войдите в аккаунт, чтобы сохранить прогулку.');
       return null;
     }
 
@@ -97,8 +97,8 @@ export function useWalkRecordingActions() {
       });
       clearAfterStop();
       return track;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'upload_failed');
+    } catch {
+      setError('Не удалось сохранить прогулку. Проверьте интернет и попробуйте снова.');
       return null;
     } finally {
       setUploading(false);
