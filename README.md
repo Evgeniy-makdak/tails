@@ -48,7 +48,34 @@
 Render Free после простоя «засыпает» — первый запрос может занять ~30–60 с.
 
 Подробнее про деплой бэка: **[docs/DEPLOY_BACKEND.md](docs/DEPLOY_BACKEND.md)**.  
-Про чат: **[docs/CHAT_GUIDE.md](docs/CHAT_GUIDE.md)**.
+Про чат: **[docs/CHAT_GUIDE.md](docs/CHAT_GUIDE.md)**.  
+Про ошейник + GPS + SIM: **[docs/COLLAR_INTEGRATION.md](docs/COLLAR_INTEGRATION.md)**.
+
+### Симбиоз с ошейником (схема)
+
+Ошейник сам определяет GPS и шлёт точки в облако по SIM. Приложение читает данные **с сервера**, а не напрямую с железа.
+
+```mermaid
+flowchart LR
+  subgraph device [Ошейник]
+    GPS[GPS / GNSS]
+    SIM[SIM / eSIM + LTE]
+  end
+  subgraph cloud [Облако]
+    Vendor[API производителя]
+    Tailio[Бэкенд Tailio]
+  end
+  subgraph app [Клиент]
+    Map[Карта / геозоны / история]
+  end
+  GPS --> SIM
+  SIM -->|HTTPS / MQTT| Vendor
+  SIM -->|целевой путь| Tailio
+  Vendor -.->|адаптер| Tailio
+  Tailio -->|GET location / tracks| Map
+```
+
+Сейчас в демо live-точка берётся с GPS телефона (`LOCATION_MODE=device`). Цель прода: ошейник → Tailio → `LOCATION_MODE=api`. Подробности, roadmap и варианты железа — в **[docs/COLLAR_INTEGRATION.md](docs/COLLAR_INTEGRATION.md)**.
 
 ### Живой чат (кратко)
 
@@ -70,12 +97,13 @@ Render Free после простоя «засыпает» — первый за
 
 ### История перемещений (кратко)
 
-- На карте: **«Начать прогулку» / «Стоп · сохранить»** — GPS пишется локально, после Стоп уходит на бэкенд (`POST /api/tracks`).
-- Запись продолжается при переключении вкладок внутри приложения; на GitHub Pages **закрытие вкладки браузера** останавливает запись (настоящий фон OS на вебе недоступен).
-- История показывает **только сохранённые** маршруты (авто-демо круги отключены).
-- Удаление: одна прогулка или **«Очистить всё»** (`DELETE /api/tracks/:id`, `DELETE /api/tracks`) — чтобы не раздувать Render Free.
+- На карте: **«Начать прогулку» / «Завершить прогулку»** — точки пишутся локально, после завершения уходят на бэкенд (`POST /api/tracks`).
+- Запись продолжается при переключении вкладок внутри приложения.
+- История показывает **только сохранённые** маршруты.
+- Удаление: одна прогулка или все (`DELETE /api/tracks/:id`, `DELETE /api/tracks`).
 - Лимиты на сервере: ≤ **12** прогулок на пользователя, ≤ **120** точек на трек (downsample), старые вытесняются.
 - Клиент: `useWalkRecording*` + `usePetTracks`.
+
 ---
 
 ## Что есть в прототипе UI
@@ -269,9 +297,9 @@ npm run chat:consultant:build  # собрать кабинет в server/public
 
 **Ещё не прод-готово / следующие шаги:**
 
-- координаты **с ошейника** (`LOCATION_MODE=api`) вместо GPS телефона;
+- координаты **с ошейника** (`LOCATION_MODE=api`) вместо GPS телефона — см. **[docs/COLLAR_INTEGRATION.md](docs/COLLAR_INTEGRATION.md)**;
 - серверные аккаунты приложения, реальная почта / OTP;
-- постоянный диск / VPS для истории чатов (на Render Free данные могут сбрасываться);
+- постоянный диск / VPS для истории (на Render Free данные могут сбрасываться);
 - пиксельная доводка UI, релизы App Store / Google Play.
 
 Репозиторий: [github.com/Evgeniy-makdak/tails](https://github.com/Evgeniy-makdak/tails).
