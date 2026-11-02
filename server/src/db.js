@@ -17,6 +17,7 @@ function emptyDb() {
     messages: [],
     walks: [],
     geozones: [],
+    collar_locations: [],
   };
 }
 

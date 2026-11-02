@@ -11,6 +11,13 @@ import {
 import { listConsultantActive, listWaitingQueue, upsertAppUser } from './chatService.js';
 import { findById, findOne, insert, nowIso } from './db.js';
 import {
+  assertIngestKey,
+  getCollarLocation,
+  mapTraccarPosition,
+  toPublicDto,
+  upsertCollarTelemetry,
+} from './collarService.js';
+import {
   createTrack,
   deleteTrackForUser,
   deleteTracksForUser,
@@ -220,6 +227,69 @@ export function createApiRouter() {
     const onlyDemo = req.query.demo === '1' || req.body?.onlyDemo === true;
     const removed = deleteTracksForUser(req.auth.id, { onlyDemo });
     res.json({ ok: true, removed });
+  });
+
+  /**
+   * Live collar point for the app (LOCATION_MODE=api).
+   * Public read for pilot — tighten with user auth once accounts are server-side.
+   */
+  router.get('/collars/:id/location', (req, res) => {
+    const row = getCollarLocation(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    const dto = toPublicDto(row);
+    if (req.query.petId) {
+      dto.petId = String(req.query.petId);
+    }
+    res.json(dto);
+  });
+
+  /**
+   * Ingest from adapter / curl / OEM.
+   * Header: X-Collar-Ingest-Key (env COLLAR_INGEST_SECRET).
+   */
+  router.post('/collars/:id/telemetry', (req, res) => {
+    if (!assertIngestKey(req)) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    try {
+      const dto = upsertCollarTelemetry(req.params.id, {
+        ...req.body,
+        collarId: req.params.id,
+      });
+      res.status(201).json({ location: dto });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'ingest_failed',
+      });
+    }
+  });
+
+  /**
+   * Traccar position forward / webhook.
+   * Body may be { position, device } or a flat position object.
+   */
+  router.post('/collars/ingest/traccar', (req, res) => {
+    if (!assertIngestKey(req)) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    try {
+      const mapped = mapTraccarPosition(req.body || {});
+      if (!mapped.collarId) {
+        res.status(400).json({ error: 'collar_id_required' });
+        return;
+      }
+      const dto = upsertCollarTelemetry(mapped.collarId, mapped);
+      res.status(201).json({ location: dto });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'ingest_failed',
+      });
+    }
   });
 
   return router;

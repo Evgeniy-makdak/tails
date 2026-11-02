@@ -7,7 +7,8 @@
 - схема в корневом [README.md](../README.md) (раздел «Симбиоз с ошейником»);
 - деплой бэка: [DEPLOY_BACKEND.md](DEPLOY_BACKEND.md);
 - живой чат: [CHAT_GUIDE.md](CHAT_GUIDE.md);
-- заготовка клиента: `src/api/collar.ts`, `src/location/providers/apiCollar.ts`.
+- заготовка клиента: `src/api/collar.ts`, `src/location/providers/apiCollar.ts`;
+- **пилот TK919 4G:** [TK919_INTEGRATION.md](TK919_INTEGRATION.md) — SMS `adminip`, Traccar, API телеметрии.
 
 ---
 
@@ -124,7 +125,9 @@ GET /collars/{collarId}/location?petId=...
 | `GET/POST/DELETE /api/tracks` | История прогулок (лимит ≤12 треков, ≤120 точек) |
 | Кабинет консультанта | PWA на том же хосте |
 
-**Ещё нет на сервере:** приём телеметрии от ошейника, `last_location`, привязка `collarId` ↔ пользователь, команды LED/buzzer, постоянный диск (на Free данные могут сбрасываться при redeploy).
+**На сервере уже есть (пилот):** `POST /api/collars/:id/telemetry`, `GET /api/collars/:id/location`, `POST /api/collars/ingest/traccar` — см. [TK919_INTEGRATION.md](TK919_INTEGRATION.md).
+
+**Ещё нет:** привязка `collarId` ↔ пользователь на сервере, команды LED/buzzer из app, постоянный диск (на Free данные могут сбрасываться при redeploy), TCP-listener протокола TK919 (нужен Traccar/VPS или GPS-Trace).
 
 ### Важно про текущую «прогулку»
 

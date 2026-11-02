@@ -49,7 +49,8 @@ Render Free после простоя «засыпает» — первый за
 
 Подробнее про деплой бэка: **[docs/DEPLOY_BACKEND.md](docs/DEPLOY_BACKEND.md)**.  
 Про чат: **[docs/CHAT_GUIDE.md](docs/CHAT_GUIDE.md)**.  
-Про ошейник + GPS + SIM: **[docs/COLLAR_INTEGRATION.md](docs/COLLAR_INTEGRATION.md)**.
+Про ошейник + GPS + SIM: **[docs/COLLAR_INTEGRATION.md](docs/COLLAR_INTEGRATION.md)**.  
+Пилот **TK919 4G** (SMS `adminip` → наш сервер): **[docs/TK919_INTEGRATION.md](docs/TK919_INTEGRATION.md)**.
 
 ### Симбиоз с ошейником (схема)
 
