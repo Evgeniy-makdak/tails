@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
+import { LanguageSwitcher } from '../../components/ui/LanguageSwitcher';
 import { useI18n } from '../../i18n';
 
 type Props = {
@@ -53,6 +54,7 @@ export function WelcomeScreen({ onStart, onLogin }: Props) {
           </View>
         </View>
       </SafeAreaView>
+      <LanguageSwitcher />
     </View>
   );
 }
