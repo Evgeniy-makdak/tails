@@ -45,7 +45,6 @@ export function useLiveChat(options: Options) {
   const wsRef = useRef<WebSocket | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   const retryRef = useRef(0);
-  const closedRef = useRef(false);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -72,10 +71,11 @@ export function useLiveChat(options: Options) {
       return undefined;
     }
 
-    closedRef.current = false;
+    let disposed = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = async () => {
+      if (disposed) return;
       setStatus('connecting');
       setError(null);
       try {
@@ -94,12 +94,13 @@ export function useLiveChat(options: Options) {
           },
         });
 
-        if (closedRef.current) return;
+        if (disposed) return;
 
         const ws = new WebSocket(`${toWsBaseUrl(API_BASE_URL)}/ws?token=${encodeURIComponent(auth.token)}`);
         wsRef.current = ws;
 
         ws.onopen = () => {
+          if (disposed) return;
           retryRef.current = 0;
           setStatus('online');
           ws.send(
@@ -111,6 +112,7 @@ export function useLiveChat(options: Options) {
         };
 
         ws.onmessage = (event) => {
+          if (disposed) return;
           let msg: { type: string; [key: string]: unknown };
           try {
             msg = JSON.parse(String(event.data));
@@ -170,9 +172,9 @@ export function useLiveChat(options: Options) {
         };
 
         ws.onclose = () => {
+          if (disposed) return;
           setStatus('offline');
           wsRef.current = null;
-          if (closedRef.current) return;
           const delay = Math.min(10000, 1000 * 2 ** retryRef.current);
           retryRef.current += 1;
           retryTimer = setTimeout(() => {
@@ -181,27 +183,27 @@ export function useLiveChat(options: Options) {
         };
 
         ws.onerror = () => {
+          if (disposed) return;
           setStatus('error');
           setError(tr('chat_serverOffline'));
         };
       } catch (err) {
+        if (disposed) return;
         setStatus('error');
         setError(err instanceof Error ? err.message : tr('chat_connectionFailed'));
         setMessages([{ id: 'welcome', role: 'bot', text: welcomeText }]);
-        if (!closedRef.current) {
-          const delay = Math.min(10000, 1000 * 2 ** retryRef.current);
-          retryRef.current += 1;
-          retryTimer = setTimeout(() => {
-            void connect();
-          }, delay);
-        }
+        const delay = Math.min(10000, 1000 * 2 ** retryRef.current);
+        retryRef.current += 1;
+        retryTimer = setTimeout(() => {
+          void connect();
+        }, delay);
       }
     };
 
     void connect();
 
     return () => {
-      closedRef.current = true;
+      disposed = true;
       if (retryTimer) clearTimeout(retryTimer);
       if (typingTimer.current) clearTimeout(typingTimer.current);
       wsRef.current?.close();
