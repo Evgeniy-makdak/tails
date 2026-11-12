@@ -15,6 +15,7 @@ import { TextField } from '../../components/ui/TextField';
 import { PetAvatar } from '../../components/pet/PetAvatar';
 import { PetProfileForm } from '../../components/pet/PetProfileForm';
 import { ageLabelFromBirth, emptyPetProfile, type PetProfileInput } from '../../data/auth';
+import { breedDisplayName } from '../../data/breeds';
 import { petSexMessageKey, useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
@@ -26,7 +27,7 @@ type ProfileNav = CompositeNavigationProp<
 >;
 
 export function ProfileScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigation = useNavigation<ProfileNav>();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
@@ -70,7 +71,7 @@ export function ProfileScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.petName}>{item.name}</Text>
                 <Text style={styles.petMeta}>
-                  {item.breed} · {item.birthDate ? ageLabelFromBirth(item.birthDate) : item.ageLabel} · {t(petSexMessageKey(item.sex))}
+                  {breedDisplayName(item.breed, locale)} · {item.birthDate ? ageLabelFromBirth(item.birthDate) : item.ageLabel} · {t(petSexMessageKey(item.sex))}
                 </Text>
               </View>
               {item.id === pet.id ? <Text style={styles.current}>{t('profile_current')}</Text> : null}

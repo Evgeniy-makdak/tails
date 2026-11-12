@@ -5,11 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { breedLabel, filterBreeds, findBreed } from '../../data/breeds';
 import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
-
-import { BREEDS } from '../../data/breeds';
 
 type Props = {
   onSave: () => void;
@@ -17,11 +16,13 @@ type Props = {
 };
 
 export function BreedScreen({ onSave, onBack }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const breed = useAppStore((state) => state.onboarding.breed);
+  const kind = useAppStore((state) => state.onboarding.kind);
   const patchOnboarding = useAppStore((state) => state.patchOnboarding);
   const [query, setQuery] = useState('');
-  const list = BREEDS.filter((item) => item.toLowerCase().includes(query.trim().toLowerCase()));
+  const list = filterBreeds(kind, locale, query);
+  const selectedId = findBreed(breed)?.id;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -38,9 +39,9 @@ export function BreedScreen({ onSave, onBack }: Props) {
       </View>
       <ScrollView contentContainerStyle={styles.list}>
         {list.map((item) => (
-          <Pressable key={item} style={styles.row} onPress={() => patchOnboarding({ breed: item })}>
-            <Text style={styles.name}>{item}</Text>
-            <View style={[styles.radio, breed === item && styles.radioOn]} />
+          <Pressable key={item.id} style={styles.row} onPress={() => patchOnboarding({ breed: item.id })}>
+            <Text style={styles.name}>{breedLabel(item, locale)}</Text>
+            <View style={[styles.radio, selectedId === item.id && styles.radioOn]} />
           </Pressable>
         ))}
       </ScrollView>

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { breedDisplayName } from '../../data/breeds';
 import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
@@ -15,7 +16,7 @@ type Props = {
 };
 
 export function PetSetupScreen({ onNext, onSkip, onPickBreed }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const draft = useAppStore((state) => state.onboarding);
   const patchOnboarding = useAppStore((state) => state.patchOnboarding);
   const setOnboardingSex = useAppStore((state) => state.setOnboardingSex);
@@ -42,7 +43,7 @@ export function PetSetupScreen({ onNext, onSkip, onPickBreed }: Props) {
           <TextField
             label={t('onboarding_petBreed')}
             placeholder={t('onboarding_petBreed')}
-            value={draft.breed}
+            value={draft.breed ? breedDisplayName(draft.breed, locale) : ''}
             editable={false}
             pointerEvents="none"
           />

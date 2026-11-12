@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
 import { ageLabelFromBirth } from '../../data/auth';
+import { breedDisplayName } from '../../data/breeds';
 import { PHOTO_LIBRARY } from '../../data/photos';
 import { useI18n, type MessageKey } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
@@ -35,7 +36,7 @@ const TABS: { id: TabId; label: MessageKey }[] = [
 ];
 
 export function PetCardScreen({ navigation, route }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const pet = useAppStore((state) => state.pets.find((item) => item.id === route.params.petId));
   const updatePet = useAppStore((state) => state.updatePet);
@@ -52,6 +53,7 @@ export function PetCardScreen({ navigation, route }: Props) {
 
   const kindLabel = pet.kind === 'cat' ? t('pet_kindCat') : t('pet_kindDog');
   const sexLabel = pet.sex === 'Сука' || pet.sex === 'Кошка' ? t('pet_sexFemaleShort') : t('pet_sexMaleShort');
+  const breedLabelText = breedDisplayName(pet.breed, locale);
   const hero = pet.heroPhoto ?? pet.photo;
 
   const showAvatar = tab !== 'photo' || !hero;
@@ -86,7 +88,7 @@ export function PetCardScreen({ navigation, route }: Props) {
         </Text>
 
         <View style={styles.facts}>
-          <Fact label={t('pet_breed')} value={pet.breed} />
+          <Fact label={t('pet_breed')} value={breedLabelText} />
           <Fact label={t('pet_sex')} value={sexLabel} />
           <Fact label={t('onboarding_birthDate')} value={pet.birthDate} />
           <Fact label={t('pet_weight')} value={t('common_kgShort', { value: pet.weightKg })} />
@@ -157,7 +159,7 @@ export function PetCardScreen({ navigation, route }: Props) {
       <InAppSheet visible={edit} onClose={() => setEdit(false)}>
         <Text style={styles.sheetTitle}>{t('common_edit')}</Text>
         <EditField label={t('pet_name')} value={pet.name} onChange={(name) => updatePet(pet.id, { name })} />
-        <EditField label={t('pet_breed')} value={pet.breed} onChange={(breed) => updatePet(pet.id, { breed })} />
+        <EditField label={t('pet_breed')} value={breedLabelText} onChange={(breed) => updatePet(pet.id, { breed })} />
         <EditField
           label={t('pet_weightKg')}
           value={String(pet.weightKg)}

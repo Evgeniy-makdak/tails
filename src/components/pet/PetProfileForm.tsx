@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { type PetProfileInput } from '../../data/auth';
-import { BREEDS } from '../../data/breeds';
+import { breedDisplayName, breedLabel, breedMatchesKind, filterBreeds, findBreed } from '../../data/breeds';
 import { useI18n } from '../../i18n';
 import { colors, radius, type } from '../../theme';
 import type { PetKind } from '../../types/pet';
@@ -19,16 +19,18 @@ type Props = {
 };
 
 export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit, onCancel }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [pickingBreed, setPickingBreed] = useState(false);
   const [query, setQuery] = useState('');
   const boy = values.sex === 'Кобель' || values.sex === 'Кот';
-  const list = BREEDS.filter((item) => item.toLowerCase().includes(query.trim().toLowerCase()));
+  const list = filterBreeds(values.kind, locale, query);
+  const selectedId = findBreed(values.breed)?.id;
 
   const setKind = (kind: PetKind) => {
     onChange({
       kind,
       sex: kind === 'cat' ? (boy ? 'Кот' : 'Кошка') : boy ? 'Кобель' : 'Сука',
+      ...(breedMatchesKind(values.breed, kind) ? {} : { breed: '' }),
     });
   };
 
@@ -42,16 +44,16 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
         <ScrollView style={styles.breedList} contentContainerStyle={styles.breedContent} keyboardShouldPersistTaps="handled">
           {list.map((item) => (
             <Pressable
-              key={item}
+              key={item.id}
               style={styles.breedRow}
               onPress={() => {
-                onChange({ breed: item });
+                onChange({ breed: item.id });
                 setPickingBreed(false);
                 setQuery('');
               }}
             >
-              <Text style={styles.breedName}>{item}</Text>
-              <View style={[styles.radio, values.breed === item && styles.radioOn]} />
+              <Text style={styles.breedName}>{breedLabel(item, locale)}</Text>
+              <View style={[styles.radio, selectedId === item.id && styles.radioOn]} />
             </Pressable>
           ))}
         </ScrollView>
@@ -76,7 +78,7 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
           <TextField
             label={t('onboarding_petBreed')}
             placeholder={t('onboarding_petBreed')}
-            value={values.breed}
+            value={values.breed ? breedDisplayName(values.breed, locale) : ''}
             editable={false}
             pointerEvents="none"
           />

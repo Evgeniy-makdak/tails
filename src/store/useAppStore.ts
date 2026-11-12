@@ -21,6 +21,7 @@ import {
   type PetProfileInput,
   type WalkEntry,
 } from '../data/auth';
+import { breedMatchesKind } from '../data/breeds';
 import type { HomeSegment, Pet, PetKind, PetSex, QuickActionKind } from '../types/pet';
 import { APP_STORAGE_KEY } from '../utils/resetAppData';
 
@@ -139,8 +140,10 @@ export const useAppStore = create<AppState>()(
           }),
         setOnboardingSex: (kind, boy) => {
           const sex: PetSex = kind === 'cat' ? (boy ? 'Кот' : 'Кошка') : boy ? 'Кобель' : 'Сука';
+          const draft = get().onboarding;
+          const nextBreed = breedMatchesKind(draft.breed, kind) ? draft.breed : '';
           set({
-            onboarding: { ...get().onboarding, kind, sex },
+            onboarding: { ...draft, kind, sex, breed: nextBreed },
           });
         },
         finishOnboarding: (collarConnected) => {

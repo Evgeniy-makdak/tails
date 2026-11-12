@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { breedDisplayName } from '../../data/breeds';
 import { petSexMessageKey, useI18n } from '../../i18n';
 import { colors, radius, type } from '../../theme';
 import type { Pet } from '../../types/pet';
@@ -11,14 +12,14 @@ type Props = {
 };
 
 export function PetCard({ pet }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <Card style={styles.wrap}>
       <PetAvatar pet={pet} size={56} />
       <View style={styles.body}>
         <Text style={styles.name}>{pet.name}</Text>
         <Text style={styles.meta}>
-          {pet.breed} · {pet.ageLabel} · {t(petSexMessageKey(pet.sex))}
+          {breedDisplayName(pet.breed, locale)} · {pet.ageLabel} · {t(petSexMessageKey(pet.sex))}
         </Text>
         <Text style={styles.mood}>{pet.wellbeing}</Text>
       </View>
