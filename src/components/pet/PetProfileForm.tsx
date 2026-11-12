@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { type PetProfileInput } from '../../data/auth';
 import { BREEDS } from '../../data/breeds';
+import { useI18n } from '../../i18n';
 import { colors, radius, type } from '../../theme';
 import type { PetKind } from '../../types/pet';
 import { Button } from '../ui/Button';
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit, onCancel }: Props) {
+  const { t } = useI18n();
   const [pickingBreed, setPickingBreed] = useState(false);
   const [query, setQuery] = useState('');
   const boy = values.sex === 'Кобель' || values.sex === 'Кот';
@@ -33,9 +35,9 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
   if (pickingBreed) {
     return (
       <View style={styles.root}>
-        <Text style={styles.title}>Порода</Text>
+        <Text style={styles.title}>{t('onboarding_breedTitle')}</Text>
         <View style={styles.search}>
-          <TextField placeholder="Введите название вашей породы" value={query} onChangeText={setQuery} />
+          <TextField placeholder={t('onboarding_breedPlaceholder')} value={query} onChangeText={setQuery} />
         </View>
         <ScrollView style={styles.breedList} contentContainerStyle={styles.breedContent} keyboardShouldPersistTaps="handled">
           {list.map((item) => (
@@ -54,7 +56,7 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
           ))}
         </ScrollView>
         <View style={styles.actions}>
-          <Button label="Назад" variant="ghost" onPress={() => setPickingBreed(false)} />
+          <Button label={t('common_back')} variant="ghost" onPress={() => setPickingBreed(false)} />
         </View>
       </View>
     );
@@ -65,40 +67,40 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
       <Text style={styles.title}>{title}</Text>
       <ScrollView style={styles.form} contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
         <TextField
-          label="Имя питомца"
-          placeholder="Имя питомца"
+          label={t('onboarding_petName')}
+          placeholder={t('onboarding_petName')}
           value={values.name}
           onChangeText={(name) => onChange({ name })}
         />
         <Pressable onPress={() => setPickingBreed(true)}>
           <TextField
-            label="Порода питомца"
-            placeholder="Порода питомца"
+            label={t('onboarding_petBreed')}
+            placeholder={t('onboarding_petBreed')}
             value={values.breed}
             editable={false}
             pointerEvents="none"
           />
         </Pressable>
         <TextField
-          label="Дата рождения"
+          label={t('onboarding_birthDate')}
           placeholder="01.01.2020"
           value={values.birthDate}
           onChangeText={(birthDate) => onChange({ birthDate })}
         />
-        <Text style={styles.section}>Кто ваш питомец?</Text>
+        <Text style={styles.section}>{t('onboarding_petKind')}</Text>
         <View style={styles.row}>
-          <Choice label="Собака" active={values.kind === 'dog'} onPress={() => setKind('dog')} />
-          <Choice label="Кошка" active={values.kind === 'cat'} onPress={() => setKind('cat')} />
+          <Choice label={t('pet_kindDog')} active={values.kind === 'dog'} onPress={() => setKind('dog')} />
+          <Choice label={t('pet_kindCat')} active={values.kind === 'cat'} onPress={() => setKind('cat')} />
         </View>
-        <Text style={styles.section}>Пол питомца</Text>
+        <Text style={styles.section}>{t('onboarding_petSex')}</Text>
         <View style={styles.row}>
           <Choice
-            label="Мальчик"
+            label={t('pet_sexBoy')}
             active={boy}
             onPress={() => onChange({ sex: values.kind === 'cat' ? 'Кот' : 'Кобель' })}
           />
           <Choice
-            label="Девочка"
+            label={t('pet_sexGirl')}
             active={!boy}
             onPress={() => onChange({ sex: values.kind === 'cat' ? 'Кошка' : 'Сука' })}
           />
@@ -106,7 +108,7 @@ export function PetProfileForm({ title, values, submitLabel, onChange, onSubmit,
       </ScrollView>
       <View style={styles.actions}>
         <Button label={submitLabel} disabled={!values.name.trim()} onPress={onSubmit} />
-        <Button label="Отмена" variant="ghost" onPress={onCancel} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={onCancel} />
       </View>
     </View>
   );

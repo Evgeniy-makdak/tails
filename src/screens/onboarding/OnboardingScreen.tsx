@@ -11,30 +11,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardingArt } from '../../components/illustrations/OnboardingArt';
 import { Button } from '../../components/ui/Button';
+import { useI18n, type MessageKey } from '../../i18n';
 import { colors, spacing, type } from '../../theme';
 
 type Slide = {
   key: 'care' | 'rhythm' | 'nearby';
-  title: string;
-  body: string;
+  title: MessageKey;
+  body: MessageKey;
 };
 
 const SLIDES: Slide[] = [
-  {
-    key: 'care',
-    title: 'Все хвосты —\nпод присмотром',
-    body: 'Дневник питомца: кормление, прогулки и настроение в одном тёплом месте.',
-  },
-  {
-    key: 'rhythm',
-    title: 'Ритм дня,\nа не хаос',
-    body: 'Напоминания о еде, таблетках и выгуле приходят вовремя — без лишнего шума.',
-  },
-  {
-    key: 'nearby',
-    title: 'Рядом,\nкогда нужно',
-    body: 'Клиники, площадки и любимые маршруты всегда под рукой на карте.',
-  },
+  { key: 'care', title: 'onboarding_slideOneTitle', body: 'onboarding_slideOneBody' },
+  { key: 'rhythm', title: 'onboarding_slideTwoTitle', body: 'onboarding_slideTwoBody' },
+  { key: 'nearby', title: 'onboarding_slideThreeTitle', body: 'onboarding_slideThreeBody' },
 ];
 
 type Props = {
@@ -43,6 +32,7 @@ type Props = {
 };
 
 export function OnboardingScreen({ onSkip, onDone }: Props) {
+  const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
   const slide = SLIDES[index] ?? SLIDES[0]!;
@@ -84,8 +74,8 @@ export function OnboardingScreen({ onSkip, onDone }: Props) {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <View style={styles.topBar}>
-        <Text style={styles.brand}>Хвостик</Text>
-        <Button label="Пропустить" variant="ghost" onPress={onSkip} style={styles.skip} />
+        <Text style={styles.brand}>{t('brandName')}</Text>
+        <Button label={t('common_skip')} variant="ghost" onPress={onSkip} style={styles.skip} />
       </View>
 
       <View style={styles.body} {...panResponder.panHandlers}>
@@ -93,8 +83,8 @@ export function OnboardingScreen({ onSkip, onDone }: Props) {
           <OnboardingArt slide={slide.key} />
         </Animated.View>
         <Animated.View style={{ opacity: fade }}>
-          <Text style={styles.title}>{slide.title}</Text>
-          <Text style={styles.copy}>{slide.body}</Text>
+          <Text style={styles.title}>{t(slide.title)}</Text>
+          <Text style={styles.copy}>{t(slide.body)}</Text>
         </Animated.View>
       </View>
 
@@ -107,7 +97,7 @@ export function OnboardingScreen({ onSkip, onDone }: Props) {
             />
           ))}
         </View>
-        <Button label={isLast ? 'Перейти в приложение' : 'Далее'} onPress={next} />
+        <Button label={isLast ? t('onboarding_enterApp') : t('common_next')} onPress={next} />
       </View>
     </SafeAreaView>
   );

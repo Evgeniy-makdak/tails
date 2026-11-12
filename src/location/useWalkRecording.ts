@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 
 import { upsertChatUser } from '../api/chat';
 import { uploadPetTrack, type PetTrack } from '../api/tracks';
+import { translate, useLocaleStore } from '../i18n';
 import { useAppStore } from '../store/useAppStore';
 import { useCollarLocation } from './useCollarLocation';
 import {
@@ -70,11 +71,11 @@ export function useWalkRecordingActions() {
     const snapshot = stopLocal();
     if (!snapshot) return null;
     if (snapshot.points.length < 2) {
-      setError('Слишком короткая прогулка — пройдите ещё немного.');
+      setError(translate(useLocaleStore.getState().locale, 'map_shortWalk'));
       return null;
     }
     if (!email) {
-      setError('Войдите в аккаунт, чтобы сохранить прогулку.');
+      setError(translate(useLocaleStore.getState().locale, 'map_loginToSave'));
       return null;
     }
 
@@ -98,7 +99,7 @@ export function useWalkRecordingActions() {
       clearAfterStop();
       return track;
     } catch {
-      setError('Не удалось сохранить прогулку. Проверьте интернет и попробуйте снова.');
+      setError(translate(useLocaleStore.getState().locale, 'map_saveFailed'));
       return null;
     } finally {
       setUploading(false);

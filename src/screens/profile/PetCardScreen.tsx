@@ -17,7 +17,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Button } from '../../components/ui/Button';
 import { InAppSheet } from '../../components/ui/InAppSheet';
+import { ageLabelFromBirth } from '../../data/auth';
 import { PHOTO_LIBRARY } from '../../data/photos';
+import { useI18n, type MessageKey } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, radius, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -26,13 +28,14 @@ import type { Pet } from '../../types/pet';
 type Props = NativeStackScreenProps<AppStackParamList, 'PetCard'>;
 type TabId = 'photo' | 'companion' | 'device';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'photo', label: 'Фото' },
-  { id: 'companion', label: 'Компаньон' },
-  { id: 'device', label: 'Устройство' },
+const TABS: { id: TabId; label: MessageKey }[] = [
+  { id: 'photo', label: 'profile_photoTab' },
+  { id: 'companion', label: 'profile_companionTab' },
+  { id: 'device', label: 'profile_deviceTab' },
 ];
 
 export function PetCardScreen({ navigation, route }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const pet = useAppStore((state) => state.pets.find((item) => item.id === route.params.petId));
   const updatePet = useAppStore((state) => state.updatePet);
@@ -47,8 +50,8 @@ export function PetCardScreen({ navigation, route }: Props) {
     return null;
   }
 
-  const kindLabel = pet.kind === 'cat' ? 'Кошка' : 'Собака';
-  const sexLabel = pet.sex === 'Сука' || pet.sex === 'Кошка' ? 'Жен' : 'Муж';
+  const kindLabel = pet.kind === 'cat' ? t('pet_kindCat') : t('pet_kindDog');
+  const sexLabel = pet.sex === 'Сука' || pet.sex === 'Кошка' ? t('pet_sexFemaleShort') : t('pet_sexMaleShort');
   const hero = pet.heroPhoto ?? pet.photo;
 
   const showAvatar = tab !== 'photo' || !hero;
@@ -79,15 +82,15 @@ export function PetCardScreen({ navigation, route }: Props) {
       >
         <Text style={styles.name}>{pet.name}</Text>
         <Text style={styles.subtitle}>
-          {kindLabel}  •  {pet.id === 'persik' ? '2 года' : pet.ageLabel}
+          {kindLabel}  •  {pet.birthDate ? ageLabelFromBirth(pet.birthDate) : pet.id === 'persik' ? t('profile_persikAge') : pet.ageLabel}
         </Text>
 
         <View style={styles.facts}>
-          <Fact label="Порода" value={pet.breed} />
-          <Fact label="Пол" value={sexLabel} />
-          <Fact label="Дата рождения" value={pet.birthDate} />
-          <Fact label="Вес" value={`${pet.weightKg} кг`} />
-          <Fact label="Рост" value={`${pet.heightCm} см`} />
+          <Fact label={t('pet_breed')} value={pet.breed} />
+          <Fact label={t('pet_sex')} value={sexLabel} />
+          <Fact label={t('onboarding_birthDate')} value={pet.birthDate} />
+          <Fact label={t('pet_weight')} value={t('common_kgShort', { value: pet.weightKg })} />
+          <Fact label={t('pet_height')} value={t('common_cmShort', { value: pet.heightCm })} />
         </View>
 
         <View style={styles.tabs}>
@@ -95,7 +98,7 @@ export function PetCardScreen({ navigation, route }: Props) {
             const active = item.id === tab;
             return (
               <Pressable key={item.id} onPress={() => setTab(item.id)} style={styles.tab}>
-                <Text style={[styles.tabLabel, active && styles.tabLabelOn]}>{item.label}</Text>
+                <Text style={[styles.tabLabel, active && styles.tabLabelOn]}>{t(item.label)}</Text>
                 {active ? <View style={styles.tabLine} /> : <View style={styles.tabSpacer} />}
               </Pressable>
             );
@@ -136,7 +139,7 @@ export function PetCardScreen({ navigation, route }: Props) {
             }}
           >
             <Ionicons name="pencil-outline" size={18} color={colors.ink} />
-            <Text style={styles.menuText}>Редактировать</Text>
+            <Text style={styles.menuText}>{t('common_edit')}</Text>
           </Pressable>
           <Pressable
             style={styles.menuRow}
@@ -146,33 +149,33 @@ export function PetCardScreen({ navigation, route }: Props) {
             }}
           >
             <Ionicons name="trash-outline" size={18} color={colors.red} />
-            <Text style={[styles.menuText, { color: colors.red }]}>Удалить</Text>
+            <Text style={[styles.menuText, { color: colors.red }]}>{t('common_delete')}</Text>
           </Pressable>
         </View>
       ) : null}
 
       <InAppSheet visible={edit} onClose={() => setEdit(false)}>
-        <Text style={styles.sheetTitle}>Редактировать</Text>
-        <EditField label="Имя" value={pet.name} onChange={(name) => updatePet(pet.id, { name })} />
-        <EditField label="Порода" value={pet.breed} onChange={(breed) => updatePet(pet.id, { breed })} />
+        <Text style={styles.sheetTitle}>{t('common_edit')}</Text>
+        <EditField label={t('pet_name')} value={pet.name} onChange={(name) => updatePet(pet.id, { name })} />
+        <EditField label={t('pet_breed')} value={pet.breed} onChange={(breed) => updatePet(pet.id, { breed })} />
         <EditField
-          label="Вес, кг"
+          label={t('pet_weightKg')}
           value={String(pet.weightKg)}
           onChange={(value) => updatePet(pet.id, { weightKg: Number(value) || pet.weightKg })}
         />
         <EditField
-          label="Рост, см"
+          label={t('pet_heightCm')}
           value={String(pet.heightCm)}
           onChange={(value) => updatePet(pet.id, { heightCm: Number(value) || pet.heightCm })}
         />
-        <Button label="Готово" onPress={() => setEdit(false)} />
+        <Button label={t('common_done')} onPress={() => setEdit(false)} />
       </InAppSheet>
 
       <InAppSheet visible={remove} onClose={() => setRemove(false)}>
-        <Text style={styles.sheetTitle}>Удалить {pet.name}?</Text>
-        <Text style={styles.sheetCopy}>Профиль питомца будет убран из списка.</Text>
+        <Text style={styles.sheetTitle}>{t('pet_removeTitle', { name: pet.name })}</Text>
+        <Text style={styles.sheetCopy}>{t('pet_removeCopy')}</Text>
         <Button
-          label="Удалить"
+          label={t('common_delete')}
           variant="danger"
           onPress={() => {
             removePet(pet.id);
@@ -180,7 +183,7 @@ export function PetCardScreen({ navigation, route }: Props) {
             navigation.goBack();
           }}
         />
-        <Button label="Отмена" variant="ghost" onPress={() => setRemove(false)} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setRemove(false)} />
       </InAppSheet>
     </View>
   );
@@ -195,11 +198,12 @@ function PhotoTab({
   selected?: number;
   onSelect: (photo: number) => void;
 }) {
+  const { t } = useI18n();
   const [width, setWidth] = useState(0);
   const size = width > 0 ? Math.floor((width - 16) / 3) : 0;
 
   if (!photos.length) {
-    return <Text style={styles.empty}>Пока нет фотографий</Text>;
+    return <Text style={styles.empty}>{t('profile_noPhotos')}</Text>;
   }
   return (
     <View style={styles.grid} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
@@ -221,6 +225,7 @@ function PhotoTab({
 }
 
 function CompanionTab({ pet }: { pet: Pet }) {
+  const { t } = useI18n();
   const updatePet = useAppStore((state) => state.updatePet);
   const cover = pet.heroPhoto ?? pet.photo;
   const [sheet, setSheet] = useState<'create' | 'style' | 'save' | null>(null);
@@ -234,13 +239,13 @@ function CompanionTab({ pet }: { pet: Pet }) {
       updatePet(pet.id, { heroPhoto: photo, photo });
     }
     setSheet(null);
-    setToast('Стиль компаньона обновлён');
+    setToast(t('profile_styleUpdated'));
     setTimeout(() => setToast(''), 2000);
   };
 
   const savePhoto = () => {
     setSheet(null);
-    setToast('Фото сохранено (демо)');
+    setToast(t('profile_photoSavedDemo'));
     setTimeout(() => setToast(''), 2000);
   };
 
@@ -250,13 +255,15 @@ function CompanionTab({ pet }: { pet: Pet }) {
         {cover ? <CoverImage source={cover} style={styles.companionImg} position="center 30%" /> : <View style={styles.companionImg} />}
         <View style={styles.badge}>
           <Ionicons name="star" size={12} color={colors.white} />
-          <Text style={styles.badgeText}>Основной · {styleId === 'classic' ? 'Классика' : styleId === 'warm' ? 'Тёплый' : 'Холодный'}</Text>
+          <Text style={styles.badgeText}>{t('profile_primary', {
+              style: styleId === 'classic' ? t('profile_classic') : styleId === 'warm' ? t('profile_warm') : t('profile_cool'),
+            })}</Text>
         </View>
       </View>
-      <Text style={styles.blockTitle}>Функции</Text>
-      <ActionRow icon="add-circle-outline" label="Создать нового" onPress={() => setSheet('create')} />
-      <ActionRow icon="color-palette-outline" label="Изменить стиль" onPress={() => setSheet('style')} />
-      <ActionRow icon="download-outline" label="Сохранить фото" onPress={() => setSheet('save')} />
+      <Text style={styles.blockTitle}>{t('profile_functions')}</Text>
+      <ActionRow icon="add-circle-outline" label={t('profile_createCompanion')} onPress={() => setSheet('create')} />
+      <ActionRow icon="color-palette-outline" label={t('profile_changeStyle')} onPress={() => setSheet('style')} />
+      <ActionRow icon="download-outline" label={t('profile_savePhoto')} onPress={() => setSheet('save')} />
 
       {toast ? (
         <View style={styles.companionToast}>
@@ -265,47 +272,48 @@ function CompanionTab({ pet }: { pet: Pet }) {
       ) : null}
 
       <InAppSheet visible={sheet === 'create'} onClose={() => setSheet(null)}>
-        <Text style={styles.sheetTitle}>Новый компаньон</Text>
+        <Text style={styles.sheetTitle}>{t('profile_newCompanion')}</Text>
         <Text style={styles.sheetCopy}>
-          Демо: ИИ создаст альтернативный аватар для {pet.name}. Выберите настроение — стиль применится к карточке.
+          {t('profile_newCompanionCopy', { name: pet.name })}
         </Text>
-        <Button label="Сгенерировать (демо)" onPress={() => applyStyle('warm')} />
-        <Button label="Отмена" variant="ghost" onPress={() => setSheet(null)} />
+        <Button label={t('profile_generateDemo')} onPress={() => applyStyle('warm')} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={sheet === 'style'} onClose={() => setSheet(null)}>
-        <Text style={styles.sheetTitle}>Изменить стиль</Text>
-        <Text style={styles.sheetCopy}>Выберите пресет оформления компаньона.</Text>
-        <Button label="Классика" variant={styleId === 'classic' ? 'primary' : 'soft'} onPress={() => applyStyle('classic')} />
-        <Button label="Тёплый свет" variant={styleId === 'warm' ? 'primary' : 'soft'} onPress={() => applyStyle('warm')} />
-        <Button label="Холодный свет" variant={styleId === 'cool' ? 'primary' : 'soft'} onPress={() => applyStyle('cool')} />
+        <Text style={styles.sheetTitle}>{t('profile_changeStyle')}</Text>
+        <Text style={styles.sheetCopy}>{t('profile_choosePreset')}</Text>
+        <Button label={t('profile_classic')} variant={styleId === 'classic' ? 'primary' : 'soft'} onPress={() => applyStyle('classic')} />
+        <Button label={t('profile_warmLight')} variant={styleId === 'warm' ? 'primary' : 'soft'} onPress={() => applyStyle('warm')} />
+        <Button label={t('profile_coolLight')} variant={styleId === 'cool' ? 'primary' : 'soft'} onPress={() => applyStyle('cool')} />
       </InAppSheet>
 
       <InAppSheet visible={sheet === 'save'} onClose={() => setSheet(null)}>
-        <Text style={styles.sheetTitle}>Сохранить фото</Text>
+        <Text style={styles.sheetTitle}>{t('profile_savePhoto')}</Text>
         <Text style={styles.sheetCopy}>
-          Текущее фото {pet.name} будет сохранено в галерею устройства. В веб-демо это имитация.
+          {t('profile_savePhotoCopy', { name: pet.name })}
         </Text>
-        <Button label="Сохранить" onPress={savePhoto} />
-        <Button label="Отмена" variant="ghost" onPress={() => setSheet(null)} />
+        <Button label={t('common_save')} onPress={savePhoto} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setSheet(null)} />
       </InAppSheet>
     </View>
   );
 }
 
 function DeviceTab({ pet, onChange }: { pet: Pet; onChange: (patch: Partial<Pet>) => void }) {
+  const { t } = useI18n();
   if (!pet.collarConnected) {
-    return <Text style={styles.empty}>Устройство не подключено</Text>;
+    return <Text style={styles.empty}>{t('home_deviceNotConnected')}</Text>;
   }
 
   return (
     <View style={{ gap: 18 }}>
       <View style={styles.collarCard}>
         <View>
-          <Text style={styles.collarLabel}>Ошейник</Text>
+          <Text style={styles.collarLabel}>{t('profile_collar')}</Text>
           <Text style={styles.collarModel}>{pet.collarModel ?? 'Ninja 200'}</Text>
           <View style={styles.activePill}>
-            <Text style={styles.activePillText}>Активен</Text>
+            <Text style={styles.activePillText}>{t('profile_active')}</Text>
           </View>
         </View>
         <View style={styles.collarVisual}>
@@ -316,27 +324,27 @@ function DeviceTab({ pet, onChange }: { pet: Pet; onChange: (patch: Partial<Pet>
 
       <View style={styles.stats}>
         <Stat icon="battery-half" label={`${pet.battery}%`} />
-        <Stat icon="bluetooth" label={pet.bluetoothOn ? 'Вкл' : 'Выкл'} />
+        <Stat icon="bluetooth" label={pet.bluetoothOn ? t('common_on') : t('common_off')} />
         <Stat icon="hardware-chip-outline" label="5.2" />
-        <Stat icon="cellular-outline" label="Сеть" />
+        <Stat icon="cellular-outline" label={t('profile_network')} />
       </View>
       <Text style={styles.idLine}>
-        ID: {pet.collarId ?? '—'}  •  Версия {pet.firmware ?? '1.4.3'}
+        ID: {pet.collarId ?? '—'}  •  {t('profile_versionValue', { version: pet.firmware ?? '1.4.3' })}
       </Text>
 
-      <Text style={styles.blockTitle}>Функции</Text>
-      <ToggleRow label="GPS-трекинг" value={pet.gpsOn} onChange={(gpsOn) => onChange({ gpsOn })} />
-      <ToggleRow label="Оповещение о здоровье" value={pet.healthAlertsOn} onChange={(healthAlertsOn) => onChange({ healthAlertsOn })} />
-      <ToggleRow label="Вибрация ошейника" value={pet.vibrationOn} onChange={(vibrationOn) => onChange({ vibrationOn })} />
-      <ToggleRow label="LED-индикатор" value={pet.ledOn} onChange={(ledOn) => onChange({ ledOn })} />
+      <Text style={styles.blockTitle}>{t('profile_functions')}</Text>
+      <ToggleRow label={t('profile_gpsTracking')} value={pet.gpsOn} onChange={(gpsOn) => onChange({ gpsOn })} />
+      <ToggleRow label={t('profile_healthAlerts')} value={pet.healthAlertsOn} onChange={(healthAlertsOn) => onChange({ healthAlertsOn })} />
+      <ToggleRow label={t('profile_collarVibration')} value={pet.vibrationOn} onChange={(vibrationOn) => onChange({ vibrationOn })} />
+      <ToggleRow label={t('profile_led')} value={pet.ledOn} onChange={(ledOn) => onChange({ ledOn })} />
 
-      <Text style={styles.blockTitle}>Чувствительность датчика</Text>
-      <Text style={styles.sliderCaption}>Активность движения</Text>
+      <Text style={styles.blockTitle}>{t('profile_sensorSensitivity')}</Text>
+      <Text style={styles.sliderCaption}>{t('profile_motionActivity')}</Text>
       <SensitivitySlider value={pet.sensitivity} onChange={(sensitivity) => onChange({ sensitivity })} />
       <View style={styles.sliderLabels}>
-        <Text style={styles.meta}>Низкая</Text>
+        <Text style={styles.meta}>{t('profile_low')}</Text>
         <Text style={styles.meta}>{pet.sensitivity}%</Text>
-        <Text style={styles.meta}>Высокая</Text>
+        <Text style={styles.meta}>{t('profile_high')}</Text>
       </View>
       <View style={styles.stepRow}>
         <Pressable style={styles.stepBtn} onPress={() => onChange({ sensitivity: Math.max(0, pet.sensitivity - 5) })}>
@@ -347,9 +355,9 @@ function DeviceTab({ pet, onChange }: { pet: Pet; onChange: (patch: Partial<Pet>
         </Pressable>
       </View>
 
-      <Text style={styles.blockTitle}>Пороги оповещений</Text>
+      <Text style={styles.blockTitle}>{t('profile_alertThresholds')}</Text>
       <Threshold
-        label="Пульс"
+        label={t('health_pulse')}
         min={pet.pulseMin}
         max={pet.pulseMax}
         onMin={(pulseMin) => onChange({ pulseMin })}
@@ -362,7 +370,7 @@ function DeviceTab({ pet, onChange }: { pet: Pet; onChange: (patch: Partial<Pet>
         <View style={[styles.rangeSeg, { flex: 1, backgroundColor: '#F4A8A0' }]} />
       </View>
       <Threshold
-        label="Температура"
+        label={t('health_temperature')}
         min={pet.tempMin}
         max={pet.tempMax}
         onMin={(tempMin) => onChange({ tempMin })}

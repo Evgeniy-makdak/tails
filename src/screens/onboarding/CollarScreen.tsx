@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TailioBlob } from '../../components/brand/TailioMark';
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
 import { colors, spacing, type } from '../../theme';
 
 type Step = 'permission' | 'connect' | 'search' | 'done';
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function CollarScreen({ onFinish }: Props) {
+  const { t } = useI18n();
   const [step, setStep] = useState<Step>('permission');
 
   useEffect(() => {
@@ -39,15 +41,15 @@ export function CollarScreen({ onFinish }: Props) {
         <View style={styles.permWrap}>
           <View style={styles.permCard}>
             <View style={styles.mapMini} />
-            <Text style={styles.permTitle}>Разрешить «TAILIO» использовать ваше местоположение?</Text>
+            <Text style={styles.permTitle}>{t('onboarding_locationPermission')}</Text>
             <Pressable style={styles.permBtn} onPress={() => setStep('connect')}>
-              <Text style={styles.permAllow}>Разрешить один раз</Text>
+              <Text style={styles.permAllow}>{t('onboarding_allowOnce')}</Text>
             </Pressable>
             <Pressable style={styles.permBtn} onPress={() => setStep('connect')}>
-              <Text style={styles.permAllow}>Разрешить, пока используется приложение</Text>
+              <Text style={styles.permAllow}>{t('onboarding_allowWhileUsing')}</Text>
             </Pressable>
             <Pressable style={styles.permBtn} onPress={() => onFinish(false)}>
-              <Text style={styles.permDeny}>Не разрешать</Text>
+              <Text style={styles.permDeny}>{t('onboarding_dontAllow')}</Text>
             </Pressable>
           </View>
         </View>
@@ -57,14 +59,12 @@ export function CollarScreen({ onFinish }: Props) {
         <>
           <View style={styles.body}>
             <TailioBlob size={150} />
-            <Text style={styles.title}>Подключите ошейник</Text>
-            <Text style={styles.copy}>
-              Tailio начнёт отслеживать состояние и безопасность питомца в реальном времени
-            </Text>
+            <Text style={styles.title}>{t('onboarding_collarTitle')}</Text>
+            <Text style={styles.copy}>{t('onboarding_collarCopy')}</Text>
           </View>
           <View style={styles.footer}>
-            <Button label="Подключить" onPress={() => setStep('search')} />
-            <Button label="Пропустить" variant="ghost" onPress={() => onFinish(false)} />
+            <Button label={t('onboarding_connect')} onPress={() => setStep('search')} />
+            <Button label={t('common_skip')} variant="ghost" onPress={() => onFinish(false)} />
           </View>
         </>
       ) : null}
@@ -74,8 +74,8 @@ export function CollarScreen({ onFinish }: Props) {
           <View style={styles.collar}>
             <Ionicons name="hardware-chip-outline" size={42} color={colors.purple} />
           </View>
-          <Text style={styles.title}>Поиск устройства</Text>
-          <Text style={styles.copy}>Держите ошейник рядом с телефоном</Text>
+          <Text style={styles.title}>{t('onboarding_searching')}</Text>
+          <Text style={styles.copy}>{t('onboarding_keepNearby')}</Text>
         </View>
       ) : null}
 
@@ -85,11 +85,11 @@ export function CollarScreen({ onFinish }: Props) {
             <View style={styles.collar}>
               <Ionicons name="checkmark-circle" size={56} color={colors.green} />
             </View>
-            <Text style={styles.title}>Ошейник подключен</Text>
-            <Text style={styles.copy}>Можно переходить к главной — всё готово</Text>
+            <Text style={styles.title}>{t('onboarding_connected')}</Text>
+            <Text style={styles.copy}>{t('onboarding_connectedCopy')}</Text>
           </View>
           <View style={styles.footer}>
-            <Button label="Вперёд, к новым делам!" onPress={() => onFinish(true)} />
+            <Button label={t('onboarding_finish')} onPress={() => onFinish(true)} />
           </View>
         </>
       ) : null}

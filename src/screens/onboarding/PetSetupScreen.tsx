@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export function PetSetupScreen({ onNext, onSkip, onPickBreed }: Props) {
+  const { t } = useI18n();
   const draft = useAppStore((state) => state.onboarding);
   const patchOnboarding = useAppStore((state) => state.patchOnboarding);
   const setOnboardingSex = useAppStore((state) => state.setOnboardingSex);
@@ -29,42 +31,42 @@ export function PetSetupScreen({ onNext, onSkip, onPickBreed }: Props) {
         <View style={styles.dash} />
       </View>
       <View style={styles.body}>
-        <Text style={styles.title}>Расскажите о вашем питомце</Text>
+        <Text style={styles.title}>{t('onboarding_petTitle')}</Text>
         <TextField
-          label="Имя питомца"
-          placeholder="Имя питомца"
+          label={t('onboarding_petName')}
+          placeholder={t('onboarding_petName')}
           value={draft.petName}
           onChangeText={(value) => patchOnboarding({ petName: value })}
         />
         <Pressable onPress={onPickBreed}>
           <TextField
-            label="Порода питомца"
-            placeholder="Порода питомца"
+            label={t('onboarding_petBreed')}
+            placeholder={t('onboarding_petBreed')}
             value={draft.breed}
             editable={false}
             pointerEvents="none"
           />
         </Pressable>
         <TextField
-          label="Дата рождения"
+          label={t('onboarding_birthDate')}
           placeholder="01.01.2020"
           value={draft.birthDate}
           onChangeText={(value) => patchOnboarding({ birthDate: value })}
         />
-        <Text style={styles.section}>Кто ваш питомец?</Text>
+        <Text style={styles.section}>{t('onboarding_petKind')}</Text>
         <View style={styles.row}>
-          <Choice label="Собака" active={draft.kind === 'dog'} onPress={() => setOnboardingSex('dog', boy)} />
-          <Choice label="Кошка" active={draft.kind === 'cat'} onPress={() => setOnboardingSex('cat', boy)} />
+          <Choice label={t('pet_kindDog')} active={draft.kind === 'dog'} onPress={() => setOnboardingSex('dog', boy)} />
+          <Choice label={t('pet_kindCat')} active={draft.kind === 'cat'} onPress={() => setOnboardingSex('cat', boy)} />
         </View>
-        <Text style={styles.section}>Пол питомца</Text>
+        <Text style={styles.section}>{t('onboarding_petSex')}</Text>
         <View style={styles.row}>
-          <Choice label="Мальчик" active={boy} onPress={() => setOnboardingSex(draft.kind, true)} />
-          <Choice label="Девочка" active={!boy} onPress={() => setOnboardingSex(draft.kind, false)} />
+          <Choice label={t('pet_sexBoy')} active={boy} onPress={() => setOnboardingSex(draft.kind, true)} />
+          <Choice label={t('pet_sexGirl')} active={!boy} onPress={() => setOnboardingSex(draft.kind, false)} />
         </View>
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" disabled={!draft.petName.trim()} onPress={onNext} />
-        <Button label="Пропустить" variant="ghost" onPress={onSkip} />
+        <Button label={t('common_next')} disabled={!draft.petName.trim()} onPress={onNext} />
+        <Button label={t('common_skip')} variant="ghost" onPress={onSkip} />
       </View>
     </SafeAreaView>
   );

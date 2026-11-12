@@ -12,6 +12,7 @@ import { PetProfileForm } from '../../components/pet/PetProfileForm';
 import { Button } from '../../components/ui/Button';
 import { emptyPetProfile, profileFromPet, profilePatch, type PetProfileInput } from '../../data/auth';
 import { EMPTY_ROOM, PHOTO_LIBRARY } from '../../data/photos';
+import { useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, type } from '../../theme';
 import type { Pet } from '../../types/pet';
@@ -23,6 +24,7 @@ type HomeNav = CompositeNavigationProp<
 >;
 
 export function HomeScreen() {
+  const { t } = useI18n();
   const navigation = useNavigation<HomeNav>();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
@@ -90,7 +92,7 @@ export function HomeScreen() {
                 style={styles.petBtn}
                 onPress={() => setHomeOverlay('pets')}
               >
-                <Text style={styles.petName}>{hasPet ? pet.name : 'Добавьте питомца'}</Text>
+                <Text style={styles.petName}>{hasPet ? pet.name : t('home_addPet')}</Text>
                 <Ionicons name="chevron-down" size={22} color={colors.ink} />
               </Pressable>
             </View>
@@ -117,25 +119,25 @@ export function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.statusCopy}>
-                  <Text style={styles.statusTitle}>Всё хорошо</Text>
+                  <Text style={styles.statusTitle}>{t('home_allGood')}</Text>
                   <Text style={styles.statusSub}>
-                    {pet.name} дома и спокоен
+                    {t('home_petSafe', { name: pet.name })}
                   </Text>
                 </View>
                 <View style={styles.statusMeta}>
                   <Ionicons name="battery-half" size={14} color={colors.ink} />
                   <Text style={styles.metaText}>{pet.battery}%</Text>
                   <Text style={styles.metaText}>•</Text>
-                  <Text style={styles.metaText}>1 мин. назад</Text>
+                  <Text style={styles.metaText}>{t('home_minuteAgo')}</Text>
                 </View>
               </View>
             </View>
           ) : (
             <View style={styles.emptyWrap}>
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>{hasPet ? 'Добавьте фото питомца' : 'Добавьте питомца'}</Text>
+                <Text style={styles.emptyTitle}>{hasPet ? t('home_addPhoto') : t('home_addPet')}</Text>
                 <Text style={styles.emptyCopy}>
-                  {hasPet ? 'Tailio создаст цифрового компаньона' : 'После онбординга здесь появится ваш питомец'}
+                  {hasPet ? t('home_companionCopy') : t('home_onboardingCopy')}
                 </Text>
               </View>
               <Pressable
@@ -160,6 +162,7 @@ export function HomeScreen() {
 }
 
 function PetsSheet() {
+  const { t } = useI18n();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
   const setHomeOverlay = useAppStore((state) => state.setHomeOverlay);
@@ -204,9 +207,9 @@ function PetsSheet() {
         <View style={styles.sheet}>
         {formOpen ? (
           <PetProfileForm
-            title={editingId ? 'Редактировать питомца' : 'Новый питомец'}
+            title={editingId ? t('pet_edit') : t('pet_new')}
             values={form}
-            submitLabel={editingId ? 'Сохранить' : 'Добавить'}
+            submitLabel={editingId ? t('common_save') : t('common_add')}
             onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
             onCancel={closeForm}
             onSubmit={() => {
@@ -222,7 +225,7 @@ function PetsSheet() {
         ) : (
           <>
         <View style={styles.sheetHead}>
-          <Text style={styles.sheetTitle}>Ваши питомцы</Text>
+          <Text style={styles.sheetTitle}>{t('home_yourPets')}</Text>
           <Pressable
             onPress={() => {
               setEditingId(null);
@@ -235,7 +238,7 @@ function PetsSheet() {
         </View>
         <ScrollView contentContainerStyle={styles.sheetList} showsVerticalScrollIndicator={false}>
         {pets.length === 0 ? (
-          <Text style={styles.emptyPets}>Пока нет питомцев. Добавьте первого плюсом сверху.</Text>
+          <Text style={styles.emptyPets}>{t('home_noPets')}</Text>
         ) : null}
         {pets.map((item) => {
             const selected = item.id === draftId;
@@ -249,16 +252,16 @@ function PetsSheet() {
                 <View style={styles.petRowCopy}>
                   <Text style={styles.sheetName}>{item.name}</Text>
                   {item.collarConnected ? (
-                    <Text style={styles.okLine}>Все хорошо  •  Дома</Text>
+                    <Text style={styles.okLine}>{t('home_allGoodHome')}</Text>
                   ) : (
-                    <Text style={styles.offLine}>Устройство не подключено</Text>
+                    <Text style={styles.offLine}>{t('home_deviceNotConnected')}</Text>
                   )}
                   {item.collarConnected ? (
                     <View style={styles.rowMeta}>
                       <Ionicons name="battery-half" size={14} color={colors.ink} />
                       <Text style={styles.rowMetaText}>{item.battery}%</Text>
                       <Text style={styles.rowMetaText}>•</Text>
-                      <Text style={styles.rowMetaText}>1 мин. назад</Text>
+                      <Text style={styles.rowMetaText}>{t('home_minuteAgo')}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -277,7 +280,7 @@ function PetsSheet() {
         </ScrollView>
         <View style={styles.sheetFooter}>
           <Button
-            label="Сохранить"
+            label={t('common_save')}
             onPress={() => {
               if (pets.some((item) => item.id === draftId)) {
                 setActivePet(draftId);
@@ -296,6 +299,7 @@ function PetsSheet() {
 }
 
 function PhotosSheet({ pet }: { pet: Pet }) {
+  const { t } = useI18n();
   const setHomeOverlay = useAppStore((state) => state.setHomeOverlay);
   const addPetPhoto = useAppStore((state) => state.addPetPhoto);
 
@@ -303,8 +307,8 @@ function PhotosSheet({ pet }: { pet: Pet }) {
     <View style={styles.overlay} pointerEvents="box-none">
       <Pressable style={styles.backdrop} onPress={() => setHomeOverlay(null)} />
       <View style={styles.photoSheet}>
-        <Text style={styles.sheetTitle}>Добавить фото</Text>
-        <Text style={styles.photoHint}>Выберите изображение из папки img</Text>
+        <Text style={styles.sheetTitle}>{t('home_addPhotoTitle')}</Text>
+        <Text style={styles.photoHint}>{t('home_addPhotoHint')}</Text>
         <View style={styles.photoGrid}>
           {PHOTO_LIBRARY.map((photo) => (
             <Pressable

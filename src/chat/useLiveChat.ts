@@ -2,12 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { upsertChatUser } from '../api/chat';
 import { API_BASE_URL, toWsBaseUrl } from '../config/features';
+import { translate, useLocaleStore } from '../i18n';
 import type { LiveConversation, LiveMessage, UiChatMessage } from './types';
 import { liveToUiMessage } from './types';
 
+function tr(key: 'chat_emailRequired' | 'chat_error' | 'chat_serverOffline' | 'chat_connectionFailed') {
+  return translate(useLocaleStore.getState().locale, key);
+}
+
 /** Client welcome + any older welcome variants stored in history. */
 function isWelcomeLike(text: string) {
-  return /^Добро пожаловать в Tailio/i.test(text.trim());
+  return /^Добро пожаловать в Taily/i.test(text.trim()) || /^Welcome to Taily/i.test(text.trim());
 }
 
 type Options = {
@@ -62,7 +67,7 @@ export function useLiveChat(options: Options) {
 
     if (!email) {
       setStatus('error');
-      setError('Нужен email аккаунта для живого чата');
+      setError(tr('chat_emailRequired'));
       setMessages([{ id: 'welcome', role: 'bot', text: welcomeText }]);
       return undefined;
     }
@@ -156,7 +161,7 @@ export function useLiveChat(options: Options) {
               break;
             }
             case 'error': {
-              setError(String(msg.message || msg.code || 'Ошибка чата'));
+              setError(String(msg.message || msg.code || tr('chat_error')));
               break;
             }
             default:
@@ -177,11 +182,11 @@ export function useLiveChat(options: Options) {
 
         ws.onerror = () => {
           setStatus('error');
-          setError('Нет связи с сервером чата');
+          setError(tr('chat_serverOffline'));
         };
       } catch (err) {
         setStatus('error');
-        setError(err instanceof Error ? err.message : 'Не удалось подключить чат');
+        setError(err instanceof Error ? err.message : tr('chat_connectionFailed'));
         setMessages([{ id: 'welcome', role: 'bot', text: welcomeText }]);
         if (!closedRef.current) {
           const delay = Math.min(10000, 1000 * 2 ** retryRef.current);

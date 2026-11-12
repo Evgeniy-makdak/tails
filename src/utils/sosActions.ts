@@ -1,5 +1,7 @@
 import { Linking, Platform, Share } from 'react-native';
 
+import { translate, useLocaleStore } from '../i18n';
+
 export type SosContact = {
   id: string;
   name: string;
@@ -20,11 +22,18 @@ export function buildLiveLocationMessage(petName: string, coordsLabel: string) {
   const mapsUrl = coordsLabel.includes(',')
     ? `https://maps.google.com/?q=${coordsLabel.replace(/\s/g, '')}`
     : 'https://maps.google.com';
-  return `SOS Tailio: ищем ${petName}. Последняя точка: ${coordsLabel}. Открыть на карте: ${mapsUrl}`;
+  return translate(useLocaleStore.getState().locale, 'sos_liveLocationMessage', {
+    name: petName,
+    coordinates: coordsLabel,
+    url: mapsUrl,
+  });
 }
 
 export function buildNotifyMessage(petName: string, coordsLabel: string) {
-  return `Tailio SOS: ${petName} в режиме поиска. Координаты: ${coordsLabel}. Пожалуйста, помогите найти.`;
+  return translate(useLocaleStore.getState().locale, 'sos_notifyMessage', {
+    name: petName,
+    coordinates: coordsLabel,
+  });
 }
 
 export type ShareGeoResult = {
@@ -35,20 +44,21 @@ export type ShareGeoResult = {
 
 export async function sharePetGeolocation(petName: string, coordsLabel: string): Promise<ShareGeoResult> {
   const message = buildLiveLocationMessage(petName, coordsLabel);
+  const shareTitle = translate(useLocaleStore.getState().locale, 'sos_shareTitle', { name: petName });
   const mapsUrl = coordsLabel.includes(',')
     ? `https://maps.google.com/?q=${coordsLabel.replace(/\s/g, '')}`
     : undefined;
 
   try {
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      await navigator.share({ title: `Геолокация ${petName}`, text: message, url: mapsUrl });
+      await navigator.share({ title: shareTitle, text: message, url: mapsUrl });
       return { ok: true, method: 'share', message };
     }
 
     const result = await Share.share(
       Platform.OS === 'ios'
         ? { message, url: mapsUrl }
-        : { message, title: `Геолокация ${petName}` },
+        : { message, title: shareTitle },
     );
 
     if (result.action === Share.dismissedAction) {

@@ -26,10 +26,10 @@ export const LOCATION_MODE: LocationMode =
 export const MAP_ENGINE: MapEngine =
   process.env.EXPO_PUBLIC_MAP_ENGINE === 'demo' ? 'demo' : 'maplibre';
 
-/** Live operator chat via Tailio server WebSocket. Default ON; set EXPO_PUBLIC_CHAT_LIVE=0 for fake demo. */
+/** Live operator chat via Taily server WebSocket. Default ON; set EXPO_PUBLIC_CHAT_LIVE=0 for fake demo. */
 export const CHAT_LIVE = process.env.EXPO_PUBLIC_CHAT_LIVE !== '0';
 
-/** Base URL of Tailio Node server (REST + WS). */
+/** Base URL of Taily Node server (REST + WS). */
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8787').replace(
   /\/$/,
   '',

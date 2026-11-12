@@ -14,7 +14,8 @@ import { InAppSheet } from '../../components/ui/InAppSheet';
 import { TextField } from '../../components/ui/TextField';
 import { PetAvatar } from '../../components/pet/PetAvatar';
 import { PetProfileForm } from '../../components/pet/PetProfileForm';
-import { emptyPetProfile, type PetProfileInput } from '../../data/auth';
+import { ageLabelFromBirth, emptyPetProfile, type PetProfileInput } from '../../data/auth';
+import { petSexMessageKey, useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
@@ -25,6 +26,7 @@ type ProfileNav = CompositeNavigationProp<
 >;
 
 export function ProfileScreen() {
+  const { t } = useI18n();
   const navigation = useNavigation<ProfileNav>();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
@@ -45,13 +47,13 @@ export function ProfileScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.kicker}>Профиль</Text>
-        <Text style={styles.title}>Питомец</Text>
+        <Text style={styles.kicker}>{t('profile_title')}</Text>
+        <Text style={styles.title}>{t('profile_pet')}</Text>
 
         {pets.length === 0 ? (
           <Card>
-            <Text style={styles.rowTitle}>Пока нет питомцев</Text>
-            <Text style={styles.rowCopy}>Добавьте первого, чтобы видеть его на главной</Text>
+            <Text style={styles.rowTitle}>{t('profile_noPets')}</Text>
+            <Text style={styles.rowCopy}>{t('profile_noPetsCopy')}</Text>
           </Card>
         ) : null}
 
@@ -68,16 +70,16 @@ export function ProfileScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.petName}>{item.name}</Text>
                 <Text style={styles.petMeta}>
-                  {item.breed} · {item.ageLabel} · {item.sex}
+                  {item.breed} · {item.birthDate ? ageLabelFromBirth(item.birthDate) : item.ageLabel} · {t(petSexMessageKey(item.sex))}
                 </Text>
               </View>
-              {item.id === pet.id ? <Text style={styles.current}>сейчас</Text> : null}
+              {item.id === pet.id ? <Text style={styles.current}>{t('profile_current')}</Text> : null}
             </Card>
           </Pressable>
         ))}
 
         <Button
-          label="Добавить питомца"
+          label={t('pet_add')}
           variant="soft"
           onPress={() => {
             setForm(emptyPetProfile());
@@ -93,49 +95,49 @@ export function ProfileScreen() {
         >
           <Card>
             <View style={styles.ownerHead}>
-              <Text style={styles.rowTitle}>Хозяин</Text>
+              <Text style={styles.rowTitle}>{t('profile_owner')}</Text>
               <Ionicons name="pencil-outline" size={18} color={colors.ink} />
             </View>
-            <Text style={styles.rowCopy}>{ownerName || 'Имя не указано'}</Text>
+            <Text style={styles.rowCopy}>{ownerName || t('profile_nameMissing')}</Text>
             {ownerCity ? <Text style={styles.rowCopy}>{ownerCity}</Text> : null}
             {currentEmail ? <Text style={styles.rowCopy}>{currentEmail}</Text> : null}
           </Card>
         </Pressable>
 
-        <Button label="Выйти" variant="danger" onPress={logout} />
+        <Button label={t('profile_logout')} variant="danger" onPress={logout} />
       </ScrollView>
       <InAppSheet visible={editingOwner} onClose={() => setEditingOwner(false)}>
-        <Text style={styles.sheetTitle}>Хозяин</Text>
+        <Text style={styles.sheetTitle}>{t('profile_owner')}</Text>
         <TextField
-          label="Имя"
-          placeholder="Введите имя"
+          label={t('pet_name')}
+          placeholder={t('onboarding_namePlaceholder')}
           value={ownerDraft.name}
           onChangeText={(name) => setOwnerDraft((current) => ({ ...current, name }))}
         />
         <TextField
-          label="Город"
-          placeholder="Введите город проживания"
+          label={t('profile_city')}
+          placeholder={t('onboarding_cityPlaceholder')}
           value={ownerDraft.city}
           onChangeText={(city) => setOwnerDraft((current) => ({ ...current, city }))}
         />
-        <TextField label="Почта" value={currentEmail ?? ''} editable={false} />
-        <Text style={styles.sheetHint}>Почта — это логин, её нельзя изменить</Text>
+        <TextField label={t('auth_email')} value={currentEmail ?? ''} editable={false} />
+        <Text style={styles.sheetHint}>{t('profile_emailLocked')}</Text>
         <Button
-          label="Сохранить"
+          label={t('common_save')}
           onPress={() => {
             setOwnerName(ownerDraft.name.trim());
             setOwnerCity(ownerDraft.city.trim());
             setEditingOwner(false);
           }}
         />
-        <Button label="Отмена" variant="ghost" onPress={() => setEditingOwner(false)} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setEditingOwner(false)} />
       </InAppSheet>
       <InAppSheet visible={creating} padded={false} onClose={() => setCreating(false)}>
         <View style={styles.formSheet}>
           <PetProfileForm
-            title="Новый питомец"
+            title={t('pet_new')}
             values={form}
-            submitLabel="Добавить"
+            submitLabel={t('common_add')}
             onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
             onCancel={() => setCreating(false)}
             onSubmit={() => {

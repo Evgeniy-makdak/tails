@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
 import { colors, radius, spacing, type } from '../../theme';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function TermsScreen({ onNext, onBack }: Props) {
+  const { t } = useI18n();
   const [terms, setTerms] = useState(false);
   const [tips, setTips] = useState(false);
 
@@ -22,24 +24,19 @@ export function TermsScreen({ onNext, onBack }: Props) {
         <Text style={styles.backText}>←</Text>
       </Pressable>
       <View style={styles.body}>
-        <Text style={styles.title}>Условия использования и политика конфиденциальности</Text>
-        <Text style={styles.copy}>Пожалуйста, ознакомьтесь с условиями ниже, чтобы продолжить</Text>
+        <Text style={styles.title}>{t('auth_termsTitle')}</Text>
+        <Text style={styles.copy}>{t('auth_termsIntro')}</Text>
         <Pressable style={styles.checkRow} onPress={() => setTerms((value) => !value)}>
           <View style={[styles.box, terms && styles.boxOn]} />
-          <Text style={styles.checkText}>
-            Я ознакомился(ась) и принимаю <Text style={styles.link}>Условия использования</Text> и{' '}
-            <Text style={styles.link}>Политику конфиденциальности</Text> Tailio
-          </Text>
+          <Text style={styles.checkText}>{t('auth_termsAccept')}</Text>
         </Pressable>
         <Pressable style={styles.checkRow} onPress={() => setTips((value) => !value)}>
           <View style={[styles.box, tips && styles.boxOn]} />
-          <Text style={styles.checkText}>
-            Получать полезные рекомендации, советы по уходу и уведомления, связанные со здоровьем и безопасностью питомца
-          </Text>
+          <Text style={styles.checkText}>{t('auth_termsMarketing')}</Text>
         </Pressable>
       </View>
       <View style={styles.footer}>
-        <Button label="Продолжить" disabled={!terms} onPress={onNext} />
+        <Button label={t('common_continue')} disabled={!terms} onPress={onNext} />
       </View>
     </SafeAreaView>
   );

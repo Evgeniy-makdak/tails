@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { DEMO_OTP } from '../../data/auth';
+import { useI18n } from '../../i18n';
 import { colors, radius, spacing, type } from '../../theme';
 
 type Props = {
@@ -26,6 +27,7 @@ type Props = {
 const ACCESSORY_ID = 'otp-done';
 
 export function OtpScreen({ email, onNext, onBack }: Props) {
+  const { t } = useI18n();
   const inputRef = useRef<TextInput>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
@@ -57,11 +59,9 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <Pressable style={styles.body} onPress={hideKeyboard}>
-          <Text style={styles.title}>Подтвердите почту</Text>
-          <Text style={styles.copy}>
-            Отправили код вам на почту{email ? `\n${email}` : ''}
-          </Text>
-          <Text style={styles.hint}>Пока письма не уходят. Введите код {DEMO_OTP} вручную</Text>
+          <Text style={styles.title}>{t('auth_confirmEmail')}</Text>
+          <Text style={styles.copy}>{t('auth_codeSent', { email })}</Text>
+          <Text style={styles.hint}>{t('auth_demoCode', { code: DEMO_OTP })}</Text>
 
           <Pressable onPress={() => inputRef.current?.focus()} style={styles.row}>
             {Array.from({ length: 6 }).map((_, index) => (
@@ -100,17 +100,17 @@ export function OtpScreen({ email, onNext, onBack }: Props) {
               importantForAccessibility="no"
             />
           </Pressable>
-          {error ? <Text style={styles.error}>Неверный код. Введите код повторно</Text> : null}
+          {error ? <Text style={styles.error}>{t('auth_invalidCode')}</Text> : null}
         </Pressable>
         <View style={styles.footer}>
-          <Button label="Далее" disabled={!ready} onPress={submit} />
+          <Button label={t('common_next')} disabled={!ready} onPress={submit} />
         </View>
       </KeyboardAvoidingView>
       {Platform.OS === 'ios' ? (
         <InputAccessoryView nativeID={ACCESSORY_ID}>
           <View style={styles.accessory}>
             <Pressable onPress={hideKeyboard} hitSlop={8}>
-              <Text style={styles.accessoryText}>Готово</Text>
+              <Text style={styles.accessoryText}>{t('common_done')}</Text>
             </Pressable>
           </View>
         </InputAccessoryView>

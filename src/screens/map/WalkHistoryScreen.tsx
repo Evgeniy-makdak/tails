@@ -11,6 +11,7 @@ import { InAppSheet } from '../../components/ui/InAppSheet';
 import { MAP_ENGINE } from '../../config/features';
 import { useCollarLocation, usePetTracks } from '../../location';
 import { MapCanvas, mapConfig, type MapCamera, type MapMarker, type MapPolyline } from '../../map';
+import { translate, useI18n, type Locale } from '../../i18n';
 import { useActivePet } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -33,10 +34,14 @@ function progressToRange(progress: number): RangeId {
   return RANGES[index] ?? '24h';
 }
 
-function formatWhen(iso: string): string {
+function dateLocale(locale: Locale): string {
+  return locale === 'en' ? 'en-US' : 'ru-RU';
+}
+
+function formatWhen(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('ru-RU', {
+  return d.toLocaleString(dateLocale(locale), {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -44,15 +49,16 @@ function formatWhen(iso: string): string {
   });
 }
 
-function formatKm(meters: number): string {
-  return `${(meters / 1000).toFixed(1)} км`;
+function formatKm(meters: number, locale: Locale): string {
+  return translate(locale, 'common_kmShort', { value: (meters / 1000).toFixed(1) });
 }
 
-function formatMinutes(sec: number): string {
-  return `${Math.max(1, Math.round(sec / 60))} мин`;
+function formatMinutes(sec: number, locale: Locale): string {
+  return translate(locale, 'common_minutesShort', { value: Math.max(1, Math.round(sec / 60)) });
 }
 
 function RangeSlider({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const { t } = useI18n();
   const [width, setWidth] = useState(1);
   const clamp = (x: number) => Math.max(0, Math.min(1, x / Math.max(width, 1)));
 
@@ -66,7 +72,7 @@ function RangeSlider({ value, onChange }: { value: number; onChange: (next: numb
       onResponderGrant={(event) => onChange(clamp(event.nativeEvent.locationX))}
       onResponderMove={(event) => onChange(clamp(event.nativeEvent.locationX))}
       accessibilityRole="adjustable"
-      accessibilityLabel="Диапазон истории"
+      accessibilityLabel={t('history_rangeAccessibility')}
     >
       <View style={styles.sliderTrack}>
         <View style={[styles.sliderFill, { width: `${value * 100}%` }]} />
@@ -89,27 +95,30 @@ type TimelineSection = {
   events: TimelineEvent[];
 };
 
-function dayLabelForIso(iso: string): string {
+function dayLabelForIso(iso: string, locale: Locale): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return 'Прогулки';
+  if (Number.isNaN(d.getTime())) return translate(locale, 'history_walks');
   const today = new Date();
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const startThat = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const dayDiff = Math.round((startToday - startThat) / 86_400_000);
-  if (dayDiff === 0) return 'Сегодня';
-  if (dayDiff === 1) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  if (dayDiff === 0) return translate(locale, 'common_today');
+  if (dayDiff === 1) return translate(locale, 'common_yesterday');
+  return d.toLocaleDateString(dateLocale(locale), { day: 'numeric', month: 'long' });
 }
 
-function buildTimelineFromTracks(tracks: PetTrack[]): TimelineSection[] {
+function buildTimelineFromTracks(tracks: PetTrack[], locale: Locale): TimelineSection[] {
   const sections = new Map<string, TimelineEvent[]>();
   for (const track of tracks) {
-    const day = dayLabelForIso(track.startedAt);
+    const day = dayLabelForIso(track.startedAt, locale);
     const list = sections.get(day) ?? [];
     list.push({
       id: `walk-${track.id}`,
-      when: `${formatWhen(track.startedAt)} — ${formatWhen(track.endedAt)}`,
-      text: `прогулка · ${formatKm(track.distanceM)} · ${track.steps} шагов`,
+      when: `${formatWhen(track.startedAt, locale)} — ${formatWhen(track.endedAt, locale)}`,
+      text: translate(locale, 'history_walk', {
+        distance: formatKm(track.distanceM, locale),
+        steps: track.steps,
+      }),
       kind: 'walk',
       trackId: track.id,
     });
@@ -133,6 +142,7 @@ function trackCamera(track: PetTrack | undefined, fallbackCenter?: { latitude: n
 }
 
 export function WalkHistoryScreen({ navigation }: Props) {
+  const { t, locale } = useI18n();
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
   const { tracks, loading, reload, removeTrack, clearAll } = usePetTracks({
@@ -159,8 +169,12 @@ export function WalkHistoryScreen({ navigation }: Props) {
 
   const activeTrack = tracks.find((item) => item.id === activeWalkId) ?? tracks[0];
   const sheetTrack = tracks.find((item) => item.id === sheetWalkId) ?? null;
-  const dateLabel = dayOffset === 0 ? 'Сегодня' : dayOffset === 1 ? 'Вчера' : `${dayOffset} дн. назад`;
-  const timeline = useMemo(() => buildTimelineFromTracks(tracks), [tracks]);
+  const dateLabel = dayOffset === 0
+      ? t('common_today')
+      : dayOffset === 1
+        ? t('common_yesterday')
+        : t('history_daysAgo', { days: dayOffset });
+  const timeline = useMemo(() => buildTimelineFromTracks(tracks, locale), [tracks, locale]);
 
   const camera = useMemo(
     () => trackCamera(activeTrack, point ?? undefined),
@@ -239,7 +253,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <Text style={styles.title}>История перемещений</Text>
+        <Text style={styles.title}>{t('history_title')}</Text>
         <Pressable onPress={() => void reload()} hitSlop={8}>
           <Ionicons name="refresh" size={22} color={colors.ink} />
         </Pressable>
@@ -247,10 +261,10 @@ export function WalkHistoryScreen({ navigation }: Props) {
 
       <View style={styles.tabs}>
         <Pressable style={[styles.tab, tab === 'location' && styles.tabOn]} onPress={() => setTab('location')}>
-          <Text style={[styles.tabText, tab === 'location' && styles.tabTextOn]}>Локация</Text>
+          <Text style={[styles.tabText, tab === 'location' && styles.tabTextOn]}>{t('history_location')}</Text>
         </Pressable>
         <Pressable style={[styles.tab, tab === 'timeline' && styles.tabOn]} onPress={() => setTab('timeline')}>
-          <Text style={[styles.tabText, tab === 'timeline' && styles.tabTextOn]}>Лента</Text>
+          <Text style={[styles.tabText, tab === 'timeline' && styles.tabTextOn]}>{t('history_timeline')}</Text>
         </Pressable>
       </View>
 
@@ -286,8 +300,8 @@ export function WalkHistoryScreen({ navigation }: Props) {
             <View style={styles.mapBubble} pointerEvents="none">
               <Text style={styles.mapBubbleText}>
                 {activeTrack
-                  ? `${formatWhen(activeTrack.startedAt)} · ${formatKm(activeTrack.distanceM)}`
-                  : 'История прогулок'}
+                  ? `${formatWhen(activeTrack.startedAt, locale)} · ${formatKm(activeTrack.distanceM, locale)}`
+                  : t('history_walksTitle')}
               </Text>
             </View>
             <View style={styles.mapTools}>
@@ -309,7 +323,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
                 <Text style={styles.dateTitle}>{dateLabel}</Text>
                 <Text style={styles.dateMeta}>
                   {activeTrack
-                    ? `${formatWhen(activeTrack.startedAt)} — ${formatWhen(activeTrack.endedAt)} · ${range}`
+                    ? `${formatWhen(activeTrack.startedAt, locale)} — ${formatWhen(activeTrack.endedAt, locale)} · ${range}`
                     : range}
                 </Text>
               </View>
@@ -340,18 +354,18 @@ export function WalkHistoryScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.listHead}>
-              <Text style={styles.listTitle}>Прогулки</Text>
+              <Text style={styles.listTitle}>{t('history_walks')}</Text>
               {tracks.length > 0 ? (
                 <Pressable onPress={() => setConfirmClear(true)} hitSlop={8}>
-                  <Text style={styles.clearLink}>Удалить все</Text>
+                  <Text style={styles.clearLink}>{t('history_clearAll')}</Text>
                 </Pressable>
               ) : null}
             </View>
 
             {tracks.length === 0 && !loading ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Пока нет сохранённых прогулок.</Text>
-                <Button label="Начать прогулку" onPress={() => navigation.navigate('Main', { screen: 'Map' })} />
+                <Text style={styles.emptyText}>{t('history_empty')}</Text>
+                <Button label={t('map_startWalk')} onPress={() => navigation.navigate('Main', { screen: 'Map' })} />
               </View>
             ) : null}
 
@@ -367,9 +381,9 @@ export function WalkHistoryScreen({ navigation }: Props) {
                     <Ionicons name="location" size={18} color={colors.green} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.when}>{formatWhen(item.startedAt)}</Text>
+                    <Text style={styles.when}>{formatWhen(item.startedAt, locale)}</Text>
                     <Text style={styles.meta}>
-                      {formatKm(item.distanceM)} · {formatMinutes(item.durationSec)}
+                      {formatKm(item.distanceM, locale)} · {formatMinutes(item.durationSec, locale)}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -381,7 +395,7 @@ export function WalkHistoryScreen({ navigation }: Props) {
       ) : (
         <ScrollView contentContainerStyle={styles.timeline} showsVerticalScrollIndicator={false}>
           {timeline.length === 0 ? (
-            <Text style={styles.emptyText}>Пока нет событий в ленте.</Text>
+            <Text style={styles.emptyText}>{t('history_feedEmpty')}</Text>
           ) : null}
           {timeline.map((section) => (
             <View key={section.day} style={styles.dayBlock}>
@@ -419,24 +433,24 @@ export function WalkHistoryScreen({ navigation }: Props) {
       )}
 
       <InAppSheet visible={Boolean(sheetTrack) && !confirmClear} onClose={() => setSheetWalkId(null)}>
-        <Text style={styles.sheetTitle}>{sheetTrack ? formatWhen(sheetTrack.startedAt) : ''}</Text>
+        <Text style={styles.sheetTitle}>{sheetTrack ? formatWhen(sheetTrack.startedAt, locale) : ''}</Text>
         <Text style={styles.sheetCopy}>
           {sheetTrack
-            ? `${formatKm(sheetTrack.distanceM)} · ${formatMinutes(sheetTrack.durationSec)}`
+            ? `${formatKm(sheetTrack.distanceM, locale)} · ${formatMinutes(sheetTrack.durationSec, locale)}`
             : ''}
         </Text>
         <Button
-          label={busy ? 'Удаляем…' : 'Удалить прогулку'}
+          label={busy ? t('history_deleting') : t('history_deleteWalk')}
           variant="danger"
           onPress={() => void onDeleteTrack()}
         />
       </InAppSheet>
 
       <InAppSheet visible={confirmClear} onClose={() => setConfirmClear(false)}>
-        <Text style={styles.sheetTitle}>Удалить все прогулки?</Text>
-        <Text style={styles.sheetCopy}>История перемещений будет очищена. Это нельзя отменить.</Text>
-        <Button label={busy ? 'Удаляем…' : 'Удалить все'} variant="danger" onPress={() => void onClearAll()} />
-        <Button label="Отмена" variant="ghost" onPress={() => setConfirmClear(false)} />
+        <Text style={styles.sheetTitle}>{t('history_clearTitle')}</Text>
+        <Text style={styles.sheetCopy}>{t('history_clearCopy')}</Text>
+        <Button label={busy ? t('history_deleting') : t('history_clearAll')} variant="danger" onPress={() => void onClearAll()} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setConfirmClear(false)} />
       </InAppSheet>
     </SafeAreaView>
   );

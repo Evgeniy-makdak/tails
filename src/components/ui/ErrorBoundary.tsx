@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { translate, useLocaleStore } from '../../i18n';
 import { colors, spacing, type } from '../../theme';
 
 type Props = {
@@ -27,12 +28,14 @@ export class ErrorBoundary extends Component<Props, State> {
       return this.props.children;
     }
 
+    const locale = useLocaleStore.getState().locale;
+
     return (
       <View style={styles.box}>
-        <Text style={styles.title}>Экран не открылся</Text>
+        <Text style={styles.title}>{translate(locale, 'error_screen')}</Text>
         <Text style={styles.copy}>{this.state.error.message}</Text>
         <Pressable onPress={() => this.setState({ error: null })} style={styles.btn}>
-          <Text style={styles.btnText}>Попробовать снова</Text>
+          <Text style={styles.btnText}>{translate(locale, 'error_retry')}</Text>
         </Pressable>
       </View>
     );

@@ -17,6 +17,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { AppSafeArea } from './src/components/ui/AppSafeArea';
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { LanguageSwitcher } from './src/components/ui/LanguageSwitcher';
 import { PhoneShell } from './src/components/ui/PhoneShell';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
@@ -49,7 +50,10 @@ export default function App() {
       <PhoneShell>
         <AppSafeArea>
           <ErrorBoundary>
-            <RootNavigator />
+            <View style={styles.app}>
+              <RootNavigator />
+              <LanguageSwitcher />
+            </View>
           </ErrorBoundary>
         </AppSafeArea>
       </PhoneShell>
@@ -61,6 +65,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  app: {
+    flex: 1,
   },
   boot: {
     flex: 1,

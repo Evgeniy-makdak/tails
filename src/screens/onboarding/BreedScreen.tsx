@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function BreedScreen({ onSave, onBack }: Props) {
+  const { t } = useI18n();
   const breed = useAppStore((state) => state.onboarding.breed);
   const patchOnboarding = useAppStore((state) => state.patchOnboarding);
   const [query, setQuery] = useState('');
@@ -28,11 +30,11 @@ export function BreedScreen({ onSave, onBack }: Props) {
         <Pressable onPress={onBack}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Порода</Text>
+        <Text style={styles.title}>{t('onboarding_breedTitle')}</Text>
         <View style={{ width: 28 }} />
       </View>
       <View style={styles.search}>
-        <TextField placeholder="Введите название вашей породы" value={query} onChangeText={setQuery} />
+        <TextField placeholder={t('onboarding_breedPlaceholder')} value={query} onChangeText={setQuery} />
       </View>
       <ScrollView contentContainerStyle={styles.list}>
         {list.map((item) => (
@@ -43,7 +45,7 @@ export function BreedScreen({ onSave, onBack }: Props) {
         ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label="Сохранить" disabled={!breed.trim()} onPress={onSave} />
+        <Button label={t('common_save')} disabled={!breed.trim()} onPress={onSave} />
       </View>
     </SafeAreaView>
   );

@@ -2,6 +2,12 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Platform } from 'react-native';
 
+import { translate, useLocaleStore } from '../i18n';
+
+function tr(key: Parameters<typeof translate>[1]) {
+  return translate(useLocaleStore.getState().locale, key);
+}
+
 export type ChatAttachment = {
   kind: 'image' | 'file';
   name: string;
@@ -35,7 +41,7 @@ function fileNameFromUri(uri: string, fallback: string) {
 export async function pickChatCamera(): Promise<ChatAttachment | null> {
   const ok = await ensureCameraPermission();
   if (!ok) {
-    Alert.alert('Камера', 'Нужно разрешение на доступ к камере.');
+    Alert.alert(tr('chat_camera'), tr('alert_cameraPermission'));
     return null;
   }
 
@@ -60,7 +66,7 @@ export async function pickChatCamera(): Promise<ChatAttachment | null> {
 export async function pickChatGallery(): Promise<ChatAttachment | null> {
   const ok = await ensureLibraryPermission();
   if (!ok) {
-    Alert.alert('Галерея', 'Нужно разрешение на доступ к фото.');
+    Alert.alert(tr('alert_gallery'), tr('alert_galleryPermission'));
     return null;
   }
 
@@ -103,12 +109,12 @@ export async function pickChatDocument(): Promise<ChatAttachment | null> {
     };
   } catch (error) {
     Alert.alert(
-      'Файл',
+      tr('chat_file'),
       Platform.OS === 'web'
-        ? 'Не удалось открыть выбор файла в этом браузере.'
+        ? tr('alert_filePickerWeb')
         : error instanceof Error
           ? error.message
-          : 'Не удалось выбрать файл.',
+          : tr('alert_filePicker'),
     );
     return null;
   }

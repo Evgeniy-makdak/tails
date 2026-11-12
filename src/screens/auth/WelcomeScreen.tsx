@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
 
 type Props = {
   onStart: () => void;
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export function WelcomeScreen({ onStart, onLogin }: Props) {
+  const { t } = useI18n();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -31,9 +33,9 @@ export function WelcomeScreen({ onStart, onLogin }: Props) {
       <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
         <View style={styles.layout}>
           <View style={[styles.header, tight && styles.headerTight]}>
-            <Text style={[styles.logo, tight && styles.logoTight]}>TAILIO</Text>
+            <Text style={[styles.logo, tight && styles.logoTight]}>{t('brandNameUpper')}</Text>
             <Text style={[styles.title, compact && styles.titleCompact, tight && styles.titleTight]}>
-              Понимать.{'\n'}Заботиться.{'\n'}Быть рядом.
+              {t('welcome_title')}
             </Text>
           </View>
 
@@ -46,8 +48,8 @@ export function WelcomeScreen({ onStart, onLogin }: Props) {
           </View>
 
           <View style={[styles.footer, tight && styles.footerTight]}>
-            <Button label="Начать" onPress={onStart} style={styles.cta} />
-            <Button label="Уже есть аккаунт" variant="ghost" onPress={onLogin} />
+            <Button label={t('welcome_start')} onPress={onStart} style={styles.cta} />
+            <Button label={t('welcome_hasAccount')} variant="ghost" onPress={onLogin} />
           </View>
         </View>
       </SafeAreaView>

@@ -1,3 +1,4 @@
+import { translate, useLocaleStore } from '../i18n';
 import type { AppNotification, CareTask, Pet, PetKind, PetSex, QuickActionKind, Reminder } from '../types/pet';
 import { keyFromSource, sourceFromKey } from './photos';
 import { careTasks, deviceOff, notifications, pets, reminders } from './mock';
@@ -203,13 +204,27 @@ export function ageLabelFromBirth(birthDate: string): string {
   if (months < 0) {
     return '—';
   }
+
+  const locale = useLocaleStore.getState().locale;
+
   if (months < 12) {
-    return months <= 0 ? 'меньше месяца' : `${months} мес`;
+    return months <= 0
+      ? translate(locale, 'age_underMonth')
+      : translate(locale, 'age_months', { count: months });
   }
   const years = Math.floor(months / 12);
   const rest = months % 12;
-  const yearWord = years === 1 ? 'год' : years < 5 ? 'года' : 'лет';
-  return rest === 0 ? `${years} ${yearWord}` : `${years} ${yearWord} ${rest} мес`;
+  const yearKey =
+    years === 1 ? 'age_yearsOne' : years < 5 ? 'age_yearsFew' : 'age_yearsMany';
+  const yearWord = translate(locale, yearKey, { count: years }).replace(String(years), '').trim();
+  if (rest === 0) {
+    return translate(locale, yearKey, { count: years });
+  }
+  return translate(locale, 'age_yearsMonths', {
+    years,
+    yearWord,
+    months: rest,
+  });
 }
 
 export function petFromOnboarding(draft: OnboardingDraft): Pet {

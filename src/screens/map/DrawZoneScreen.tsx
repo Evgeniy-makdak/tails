@@ -21,6 +21,7 @@ import {
   squareBoundsFromCenter,
   type MapLatLng,
 } from '../../map';
+import { useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -32,6 +33,7 @@ const MIN_HALF_M = 40;
 const MAX_HALF_M = 400;
 
 export function DrawZoneScreen({ navigation, route }: Props) {
+  const { t } = useI18n();
   const pet = useActivePet();
   const { point } = useCollarLocation({ petId: pet.id, collarId: pet.collarId });
   const zones = useAppStore((state) => state.geozones);
@@ -116,24 +118,24 @@ export function DrawZoneScreen({ navigation, route }: Props) {
       <StatusBar style="dark" />
       <SafeAreaView edges={['top']} style={styles.topChrome} pointerEvents="box-none">
         <View style={styles.header}>
-          <Text style={styles.title}>{isEdit ? 'Измените геозону' : 'Разместите геозону'}</Text>
+          <Text style={styles.title}>{isEdit ? t('zones_editZone') : t('zones_placeZone')}</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.close}>
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
         </View>
         <View style={styles.toggles}>
           <Pressable onPress={() => setKind('safe')} style={[styles.toggle, kind === 'safe' && styles.toggleOn]}>
-            <Text style={[styles.toggleText, kind === 'safe' && styles.toggleTextOn]}>Безопасные</Text>
+            <Text style={[styles.toggleText, kind === 'safe' && styles.toggleTextOn]}>{t('zones_safe')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setKind('danger')}
             style={[styles.toggle, kind === 'danger' && styles.toggleOn]}
           >
-            <Text style={[styles.toggleText, kind === 'danger' && styles.toggleTextOn]}>Опасные</Text>
+            <Text style={[styles.toggleText, kind === 'danger' && styles.toggleTextOn]}>{t('zones_danger')}</Text>
           </Pressable>
         </View>
         <Text style={styles.hint}>
-          Перетащите квадрат в нужное место на карте. Углами можно растянуть или сжать зону.
+          {t('zones_drawHelp')}
         </Text>
       </SafeAreaView>
 
@@ -188,7 +190,7 @@ export function DrawZoneScreen({ navigation, route }: Props) {
               setMapZoom(16);
               setFollowKey((k) => k + 1);
             }}
-            accessibilityLabel="Карта к питомцу"
+            accessibilityLabel={t('zones_mapToPet')}
           >
             <Ionicons name="navigate" size={16} color={colors.purple} />
           </Pressable>
@@ -199,7 +201,7 @@ export function DrawZoneScreen({ navigation, route }: Props) {
               setMapCenter(petPoint);
               setFollowKey((k) => k + 1);
             }}
-            accessibilityLabel="Зону к питомцу"
+            accessibilityLabel={t('zones_zoneToPet')}
           >
             <Ionicons name="locate" size={16} color={colors.green} />
           </Pressable>
@@ -207,14 +209,14 @@ export function DrawZoneScreen({ navigation, route }: Props) {
 
         <View style={styles.sizePill}>
           <Text style={styles.sizeText}>
-            ~{Math.round(halfSideM * 2)} × {Math.round(halfSideM * 2)} м
+            {t('zones_sizeLabel', { size: Math.round(halfSideM * 2) })}
           </Text>
         </View>
       </View>
 
       <View style={styles.footer}>
         <Button
-          label="Далее"
+          label={t('common_next')}
           onPress={() =>
             navigation.navigate('CreatePlace', {
               kind,

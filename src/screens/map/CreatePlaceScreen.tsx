@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import type { GeoZoneBounds } from '../../data/auth';
+import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -14,6 +15,7 @@ import type { AppStackParamList } from '../../types/navigation';
 type Props = NativeStackScreenProps<AppStackParamList, 'CreatePlace'>;
 
 export function CreatePlaceScreen({ navigation, route }: Props) {
+  const { t } = useI18n();
   const addGeozone = useAppStore((state) => state.addGeozone);
   const updateGeozone = useAppStore((state) => state.updateGeozone);
   const kind = route.params?.kind ?? 'safe';
@@ -21,9 +23,9 @@ export function CreatePlaceScreen({ navigation, route }: Props) {
   const isEdit = Boolean(zoneId);
   const bounds = route.params?.bounds as GeoZoneBounds | undefined;
   const [name, setName] = useState(
-    route.params?.title ?? (kind === 'safe' ? 'Дом' : 'Парковка'),
+    route.params?.title ?? (kind === 'safe' ? t('zones_defaultSafeName') : t('zones_defaultDangerName')),
   );
-  const [address, setAddress] = useState(route.params?.address ?? 'ул. Пушкина, д. 15');
+  const [address, setAddress] = useState(route.params?.address ?? t('zones_defaultAddress'));
   const ready = name.trim().length > 0 && address.trim().length > 0;
 
   return (
@@ -31,37 +33,37 @@ export function CreatePlaceScreen({ navigation, route }: Props) {
       <StatusBar style="dark" />
       <View style={styles.header}>
         <View style={{ width: 28 }} />
-        <Text style={styles.title}>{isEdit ? 'Изменение места' : 'Создание нового места'}</Text>
+        <Text style={styles.title}>{isEdit ? t('zones_editPlace') : t('zones_newPlace')}</Text>
         <Pressable onPress={() => navigation.goBack()}>
           <Text style={styles.close}>✕</Text>
         </Pressable>
       </View>
       <View style={styles.body}>
         <TextField
-          placeholder="Введите название места"
+          placeholder={t('zones_placeNamePlaceholder')}
           value={name}
           onChangeText={setName}
           style={{ backgroundColor: colors.bg, borderWidth: 0 }}
         />
         <TextField
-          placeholder="Введите адрес"
+          placeholder={t('zones_addressPlaceholder')}
           value={address}
           onChangeText={setAddress}
           style={{ backgroundColor: colors.bg, borderWidth: 0 }}
         />
         {bounds ? (
           <Text style={styles.meta}>
-            Зона на карте сохранена ({kind === 'safe' ? 'безопасная' : 'опасная'})
+            {kind === 'safe' ? t('zones_savedSafe') : t('zones_savedDanger')}
           </Text>
         ) : (
           <Text style={styles.meta}>
-            Без координат на карте сигнализация работать не будет — вернитесь и задайте размер зоны.
+            {t('zones_noCoordinatesWarning')}
           </Text>
         )}
       </View>
       <View style={styles.footer}>
         <Button
-          label={isEdit ? 'Сохранить изменения' : 'Сохранить'}
+          label={isEdit ? t('zones_saveChanges') : t('common_save')}
           disabled={!ready}
           onPress={() => {
             const payload = {

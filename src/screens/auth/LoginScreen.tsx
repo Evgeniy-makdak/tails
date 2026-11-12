@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TailMark } from '../../components/illustrations/TailMark';
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
 import { colors, radius, spacing, type } from '../../theme';
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function LoginScreen({ onLogin, onRegister }: Props) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -21,30 +23,30 @@ export function LoginScreen({ onLogin, onRegister }: Props) {
       <StatusBar style="dark" />
       <View style={styles.header}>
         <TailMark size={56} />
-        <Text style={styles.title}>С возвращением</Text>
-        <Text style={styles.copy}>Войдите, чтобы увидеть дневник своих хвостов.</Text>
+        <Text style={styles.title}>{t('auth_welcomeBack')}</Text>
+        <Text style={styles.copy}>{t('auth_loginCopy')}</Text>
       </View>
 
       <View style={styles.form}>
         <TextInput
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder="Почта"
+          placeholder={t('auth_email')}
           placeholderTextColor={colors.muted}
           style={styles.input}
           value={email}
           onChangeText={setEmail}
         />
         <TextInput
-          placeholder="Пароль"
+          placeholder={t('auth_password')}
           placeholderTextColor={colors.muted}
           secureTextEntry
           style={styles.input}
           value={password}
           onChangeText={setPassword}
         />
-        <Button label="Войти" onPress={onLogin} />
-        <Button label="Создать аккаунт" variant="soft" onPress={onRegister} />
+        <Button label={t('auth_login')} onPress={onLogin} />
+        <Button label={t('auth_createAccount')} variant="soft" onPress={onRegister} />
       </View>
     </SafeAreaView>
   );

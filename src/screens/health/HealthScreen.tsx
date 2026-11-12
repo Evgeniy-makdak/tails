@@ -9,12 +9,13 @@ import Svg, { Circle } from 'react-native-svg';
 import { Card } from '../../components/ui/Card';
 import { IconButton } from '../../components/ui/IconButton';
 import { PetAvatar } from '../../components/pet/PetAvatar';
+import { useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 import type { MetricId } from '../../types/pet';
 
-function HealthRing({ value }: { value: number }) {
+function HealthRing({ value, label }: { value: number; label: string }) {
   const size = 168;
   const stroke = 10;
   const r = (size - stroke) / 2;
@@ -40,12 +41,13 @@ function HealthRing({ value }: { value: number }) {
       </Svg>
       <Ionicons name="heart-outline" size={18} color={colors.green} />
       <Text style={styles.ringValue}>{value}%</Text>
-      <Text style={styles.ringLabel}>Индекс здоровья</Text>
+      <Text style={styles.ringLabel}>{label}</Text>
     </View>
   );
 }
 
 export function HealthScreen() {
+  const { t, locale } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const pet = useActivePet();
   const pets = useAppStore((state) => state.pets);
@@ -53,6 +55,7 @@ export function HealthScreen() {
   const unread = useAppStore((state) => state.notifications.some((item) => !item.read));
 
   const open = (metricId: MetricId) => navigation.navigate('MetricDetail', { metricId });
+  const numberLocale = locale === 'en' ? 'en-US' : 'ru-RU';
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -74,7 +77,9 @@ export function HealthScreen() {
                 <Ionicons name="chevron-down" size={16} color={colors.ink} />
               </View>
               <Text style={[styles.status, { color: pet.collarConnected ? colors.green : colors.muted }]}>
-                {pet.collarConnected ? `Ошейник подключён · ${pet.battery}%` : 'Ошейник не подключён'}
+                {pet.collarConnected
+                  ? t('health_collarConnected', { battery: pet.battery })
+                  : t('health_collarDisconnected')}
               </Text>
             </View>
           </Pressable>
@@ -86,18 +91,18 @@ export function HealthScreen() {
         </View>
 
         <View style={styles.ringWrap}>
-          <HealthRing value={pet.healthScore} />
-          <Text style={styles.ok}>Всё в норме</Text>
-          <Text style={styles.okSub}>Показатели стабильны сегодня</Text>
+          <HealthRing value={pet.healthScore} label={t('health_index')} />
+          <Text style={styles.ok}>{t('health_allNormal')}</Text>
+          <Text style={styles.okSub}>{t('health_stableToday')}</Text>
         </View>
 
         <View style={styles.grid}>
-          <MetricMini title="Пульс" value={`${pet.pulse} уд/мин`} status="в норме" color={colors.red} onPress={() => open('pulse')} />
-          <MetricMini title="Температура" value={`${pet.temperature} °C`} status="в норме" color={colors.purple} onPress={() => open('temperature')} />
-          <MetricMini title="Шаги" value={pet.steps.toLocaleString('ru-RU')} status="норма" color={colors.green} onPress={() => open('steps')} />
-          <MetricMini title="Бег" value={`${pet.runningMinutes} мин`} status="активность" color={colors.orange} onPress={() => open('running')} />
-          <MetricMini title="Сон" value={pet.sleepLabel} status="в норме" color={colors.purple} onPress={() => open('sleep')} />
-          <MetricMini title="Отдых" value={`${pet.restHours} ч`} status="в норме" color="#3B82F6" onPress={() => open('rest')} />
+          <MetricMini title={t('health_pulse')} value={`${pet.pulse}`} status={t('health_normal')} color={colors.red} onPress={() => open('pulse')} />
+          <MetricMini title={t('health_temperature')} value={`${pet.temperature} °C`} status={t('health_normal')} color={colors.purple} onPress={() => open('temperature')} />
+          <MetricMini title={t('health_steps')} value={pet.steps.toLocaleString(numberLocale)} status={t('health_norm')} color={colors.green} onPress={() => open('steps')} />
+          <MetricMini title={t('health_running')} value={`${pet.runningMinutes}`} status={t('health_activity')} color={colors.orange} onPress={() => open('running')} />
+          <MetricMini title={t('health_sleep')} value={pet.sleepLabel} status={t('health_normal')} color={colors.purple} onPress={() => open('sleep')} />
+          <MetricMini title={t('health_rest')} value={`${pet.restHours}`} status={t('health_normal')} color="#3B82F6" onPress={() => open('rest')} />
         </View>
 
         <Pressable onPress={() => navigation.navigate('AiSummary')}>
@@ -106,8 +111,8 @@ export function HealthScreen() {
               <Ionicons name="star" size={16} color={colors.white} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.recoTitle}>Рекомендация Tailio</Text>
-              <Text style={styles.recoCopy}>Сегодня хорошая активность и стабильный пульс.</Text>
+              <Text style={styles.recoTitle}>{t('health_recommendation')}</Text>
+              <Text style={styles.recoCopy}>{t('health_recommendationCopy')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Card>

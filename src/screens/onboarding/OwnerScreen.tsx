@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function OwnerScreen({ onNext, onSkip }: Props) {
+  const { t } = useI18n();
   const name = useAppStore((state) => state.onboarding.ownerName);
   const city = useAppStore((state) => state.onboarding.ownerCity);
   const patchOnboarding = useAppStore((state) => state.patchOnboarding);
@@ -27,22 +29,22 @@ export function OwnerScreen({ onNext, onSkip }: Props) {
         <View style={styles.dash} />
       </View>
       <View style={styles.body}>
-        <Text style={styles.title}>Как вас зовут?</Text>
-        <Text style={styles.copy}>Давайте познакомимся, чтобы настроить Tailio для вас и вашего питомца</Text>
+        <Text style={styles.title}>{t('onboarding_ownerTitle')}</Text>
+        <Text style={styles.copy}>{t('onboarding_ownerCopy')}</Text>
         <TextField
-          placeholder="Введите имя"
+          placeholder={t('onboarding_namePlaceholder')}
           value={name}
           onChangeText={(value) => patchOnboarding({ ownerName: value })}
         />
         <TextField
-          placeholder="Введите город проживания"
+          placeholder={t('onboarding_cityPlaceholder')}
           value={city}
           onChangeText={(value) => patchOnboarding({ ownerCity: value })}
         />
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" disabled={!name.trim()} onPress={onNext} />
-        <Button label="Пропустить" variant="ghost" onPress={onSkip} />
+        <Button label={t('common_next')} disabled={!name.trim()} onPress={onNext} />
+        <Button label={t('common_skip')} variant="ghost" onPress={onSkip} />
       </View>
     </SafeAreaView>
   );

@@ -55,7 +55,7 @@ function ensureSeedConsultant() {
   insert('consultants', {
     id: uuid(),
     email,
-    name: 'Консультант Tailio',
+    name: 'Консультант Taily',
     password_hash: hashPassword('tailio123'),
     created_at: nowIso(),
   });

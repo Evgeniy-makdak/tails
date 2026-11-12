@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useI18n } from '../../i18n';
 import { colors, spacing, type } from '../../theme';
 
 type Props = {
@@ -10,11 +11,12 @@ type Props = {
 };
 
 export function PlaceholderScreen({ title, hint }: Props) {
+  const { t } = useI18n();
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
       <View style={styles.body}>
-        <Text style={styles.kicker}>Следующий этап</Text>
+        <Text style={styles.kicker}>{t('placeholder_nextStage')}</Text>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.copy}>{hint}</Text>
       </View>

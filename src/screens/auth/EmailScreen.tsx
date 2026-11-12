@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { DEMO_EMAIL } from '../../data/auth';
+import { useI18n } from '../../i18n';
 import { useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
+  const { t } = useI18n();
   const hasAccount = useAppStore((state) => state.hasAccount);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -25,11 +27,11 @@ export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
   const submit = () => {
     const value = email.trim();
     if (mode === 'register' && hasAccount(value)) {
-      setError('Этот адрес уже зарегистрирован. Войдите в аккаунт.');
+      setError(t('auth_accountExists'));
       return;
     }
     if (mode === 'login' && !hasAccount(value)) {
-      setError('Аккаунт не найден. Сначала зарегистрируйтесь.');
+      setError(t('auth_accountNotFound'));
       return;
     }
     setError('');
@@ -47,17 +49,15 @@ export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
         <View style={styles.back} />
       )}
       <View style={styles.body}>
-        <Text style={styles.title}>{mode === 'register' ? 'Добро пожаловать!' : 'С возвращением'}</Text>
+        <Text style={styles.title}>{mode === 'register' ? t('auth_welcome') : t('auth_welcomeBack')}</Text>
         <Text style={styles.copy}>
-          {mode === 'register'
-            ? 'Введите почту, чтобы создать аккаунт Tailio'
-            : 'Войдите по почте, чтобы продолжить'}
+          {mode === 'register' ? t('auth_registerPrompt') : t('auth_loginPrompt')}
         </Text>
         <TextField
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          placeholder="Введите почту"
+          placeholder={t('auth_emailPlaceholder')}
           value={email}
           error={Boolean(error)}
           onChangeText={(value) => {
@@ -70,12 +70,12 @@ export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {mode === 'login' ? (
-          <Text style={styles.hint}>Демо-аккаунт с Персиком: {DEMO_EMAIL}</Text>
+          <Text style={styles.hint}>{t('auth_demoAccount', { email: DEMO_EMAIL })}</Text>
         ) : null}
       </View>
       <View style={styles.footer}>
         <Button
-          label={mode === 'register' ? 'Далее' : 'Войти'}
+          label={mode === 'register' ? t('common_next') : t('auth_login')}
           disabled={!valid}
           onPress={submit}
         />
@@ -87,7 +87,7 @@ export function EmailScreen({ mode, onSubmit, onSwitch, onBack }: Props) {
           style={styles.switch}
         >
           <Text style={styles.switchText}>
-            {mode === 'register' ? 'Уже есть аккаунт' : 'Создать аккаунт'}
+            {mode === 'register' ? t('auth_alreadyRegistered') : t('auth_createAccount')}
           </Text>
         </Pressable>
       </View>

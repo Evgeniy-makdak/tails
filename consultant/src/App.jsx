@@ -267,7 +267,7 @@ export default function App() {
           <div className="brand">
             <div className="brand-mark" />
             <div>
-              <h1>Tailio Desk</h1>
+              <h1>Taily Desk</h1>
               <p>Кабинет консультанта</p>
             </div>
           </div>
@@ -335,7 +335,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand compact">
           <div className="brand-mark sm" />
-          <strong>Tailio Desk</strong>
+          <strong>Taily Desk</strong>
         </div>
         <div className="top-meta">
           <span className={`pill ${status}`}>{status === 'online' ? 'Online' : 'Offline'}</span>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '../i18n';
 import { colors, type } from '../theme';
 import type { MainTabParamList } from '../types/navigation';
 import { useAppStore } from '../store/useAppStore';
@@ -21,6 +22,7 @@ const ACTIVE_ICONS: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMa
 };
 
 export function HvostikTabBar({ state, navigation }: BottomTabBarProps) {
+  const { t } = useI18n();
   const overlay = useAppStore((s) => s.homeOverlay);
   if (overlay) {
     return null;
@@ -34,10 +36,10 @@ export function HvostikTabBar({ state, navigation }: BottomTabBarProps) {
           const name = route.name as keyof MainTabParamList;
           const color = focused ? colors.purple : colors.tabInactive;
           const labels: Record<keyof MainTabParamList, string> = {
-            Home: 'Главная',
-            Map: 'Карта',
-            Health: 'Здоровье',
-            Profile: 'Профиль',
+            Home: t('tabs_home'),
+            Map: t('tabs_map'),
+            Health: t('tabs_health'),
+            Profile: t('tabs_profile'),
           };
 
           return (

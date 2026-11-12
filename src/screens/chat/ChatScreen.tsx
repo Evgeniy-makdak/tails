@@ -20,6 +20,7 @@ import { useLiveChat } from '../../chat/useLiveChat';
 import type { UiChatMessage } from '../../chat/types';
 import { TailioBlob } from '../../components/brand/TailioMark';
 import { features } from '../../config/features';
+import { useI18n, type MessageKey } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -28,12 +29,12 @@ import { startVoiceCapture } from '../../utils/voiceInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Chat'>;
 
-const OPERATOR_REPLIES = [
-  'Мы получили ваш вопрос и уже ищем оператора для ответа…',
-  'Мы ценим ваше время! Если вы отправите подробное описание вашего вопроса, то мы ответим вам сразу после того как появится свободный оператор.',
-  'Специалист уже в очереди. Пока можете приложить фото или документы — так ответ будет точнее.',
-  'Оператор скоро подключится. Если ситуация срочная — откройте карту и активируйте SOS, чтобы связаться со службой помощи.',
-  'Спасибо за обращение! Ветеринарный специалист ответит, как только освободится. Мы сохранили ваш запрос в чате.',
+const OPERATOR_REPLIES: MessageKey[] = [
+  'chat_searchingOperator',
+  'chat_queueDetails',
+  'chat_queueAttachment',
+  'chat_queueSos',
+  'chat_queueThanks',
 ];
 
 function uid() {
@@ -41,6 +42,7 @@ function uid() {
 }
 
 export function ChatScreen({ navigation, route }: Props) {
+  const { t, locale } = useI18n();
   const pet = useActivePet();
   const currentEmail = useAppStore((s) => s.currentEmail);
   const ownerName = useAppStore((s) => s.ownerName);
@@ -52,9 +54,9 @@ export function ChatScreen({ navigation, route }: Props) {
   const welcomeText = useMemo(
     () =>
       isHelp
-        ? `Вы на связи со службой помощи Tailio. Расскажите, что случилось с ${pet.name} — специалист подключится к диалогу.`
-        : `Добро пожаловать в Tailio ✨ Теперь мы вместе будем следить за состоянием и безопасностью ${pet.name}.\n\nЯ уже проверил его состояние. Сейчас индекс его здоровья составляет ${pet.healthScore}%.`,
-    [isHelp, pet.name, pet.healthScore],
+        ? t('chat_helpWelcome', { name: pet.name })
+        : t('chat_welcome', { name: pet.name, score: pet.healthScore }),
+    [isHelp, pet.name, pet.healthScore, t],
   );
 
   const welcome = useMemo<UiChatMessage[]>(
@@ -108,17 +110,15 @@ export function ChatScreen({ navigation, route }: Props) {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => feedRef.current?.scrollToEnd({ animated: true }), 60);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => feedRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(timer);
   }, [messages, typing]);
 
   const scheduleOperatorReply = (nextCount: number) => {
     setDemoTyping(true);
     const delay = 2000 + Math.floor(Math.random() * 1000);
     const timer = setTimeout(() => {
-      const reply =
-        OPERATOR_REPLIES[(nextCount - 1) % OPERATOR_REPLIES.length] ??
-        'Мы получили ваш вопрос и уже ищем оператора для ответа…';
+      const reply = t(OPERATOR_REPLIES[(nextCount - 1) % OPERATOR_REPLIES.length] ?? 'chat_searchingOperator');
       setDemoMessages((prev) => [...prev, { id: uid(), role: 'bot', text: reply }]);
       setDemoTyping(false);
     }, delay);
@@ -135,17 +135,18 @@ export function ChatScreen({ navigation, route }: Props) {
     setDraft('');
 
     const body =
-      text || (attachment?.kind === 'image' ? 'Прикрепил(а) изображение' : `Прикрепил(а) файл: ${attachment?.name}`);
+      text ||
+      (attachment?.kind === 'image' ? t('chat_imageAttached') : t('chat_fileAttached', { name: attachment?.name ?? '' }));
 
     if (liveEnabled) {
       const payload = attachment
-        ? `${body}${attachment.kind === 'image' ? ' [фото]' : ` [файл: ${attachment.name}]`}`
+        ? `${body}${attachment.kind === 'image' ? ` ${t('chat_photoTag')}` : ` ${t('chat_fileTag', { name: attachment.name })}`}`
         : body;
       const ok = live.sendText(payload);
       if (!ok) {
         live.setMessages((prev) => [
           ...prev,
-          { id: uid(), role: 'system', text: 'Не удалось отправить. Проверьте связь с сервером.' },
+          { id: uid(), role: 'system', text: t('chat_sendFailed') },
         ]);
       }
       live.onDraftChange('');
@@ -182,7 +183,10 @@ export function ChatScreen({ navigation, route }: Props) {
     if (!attachment) {
       return;
     }
-    sendText(attachment.kind === 'image' ? 'Прикрепил(а) изображение' : `Прикрепил(а) файл: ${attachment.name}`, attachment);
+    sendText(
+      attachment.kind === 'image' ? t('chat_imageAttached') : t('chat_fileAttached', { name: attachment.name }),
+      attachment,
+    );
   };
 
   const onMic = async () => {
@@ -199,6 +203,7 @@ export function ChatScreen({ navigation, route }: Props) {
     setMenuOpen(false);
     setListening(true);
     const session = startVoiceCapture({
+      lang: locale === 'en' ? 'en-US' : 'ru-RU',
       onPartial: (text) => setDraft(text),
     });
     voiceStopRef.current = session.stop;
@@ -220,15 +225,15 @@ export function ChatScreen({ navigation, route }: Props) {
   const canSend = draft.trim().length > 0;
   const statusLabel =
     liveEnabled && live.status === 'connecting'
-      ? 'Подключение…'
+      ? t('chat_connecting')
       : liveEnabled && live.status === 'offline'
-        ? 'Нет связи'
+        ? t('chat_offline')
         : liveEnabled && live.conversation?.status === 'waiting'
-          ? 'Ищем консультанта…'
+          ? t('chat_findingConsultant')
           : liveEnabled && live.conversation?.status === 'active'
-            ? 'Консультант на связи'
+            ? t('chat_consultantOnline')
             : liveEnabled && live.conversation?.status === 'closed'
-              ? 'Закрыт — напишите, чтобы возобновить'
+              ? t('chat_closed')
               : null;
 
   return (
@@ -244,7 +249,7 @@ export function ChatScreen({ navigation, route }: Props) {
             <Ionicons name="chevron-back" size={24} color={colors.ink} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.title}>{isHelp ? 'Служба помощи' : 'Tailio Чат'}</Text>
+            <Text style={styles.title}>{isHelp ? t('chat_helpTitle') : t('chat_title')}</Text>
             {statusLabel ? <Text style={styles.status}>{statusLabel}</Text> : null}
           </View>
           <View style={{ width: 24 }} />
@@ -262,7 +267,7 @@ export function ChatScreen({ navigation, route }: Props) {
           contentContainerStyle={styles.feed}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.day}>Сегодня</Text>
+          <Text style={styles.day}>{t('chat_today')}</Text>
           {messages.map((message) => {
             if (message.role === 'system') {
               return (
@@ -276,7 +281,7 @@ export function ChatScreen({ navigation, route }: Props) {
                 <View key={message.id} style={styles.msg}>
                   <TailioBlob size={36} />
                   <View style={styles.bubble}>
-                    <Text style={styles.sender}>{isHelp || liveEnabled ? 'Специалист' : 'Tailio'}</Text>
+                    <Text style={styles.sender}>{isHelp || liveEnabled ? t('chat_specialist') : t('brandName')}</Text>
                     <MessageBody text={message.text} />
                   </View>
                 </View>
@@ -306,7 +311,7 @@ export function ChatScreen({ navigation, route }: Props) {
               <TailioBlob size={36} />
               <View style={styles.typingBubble}>
                 <ActivityIndicator size="small" color={colors.purple} />
-                <Text style={styles.typingText}>оператор печатает ответ…</Text>
+                <Text style={styles.typingText}>{t('chat_typing')}</Text>
               </View>
             </View>
           ) : null}
@@ -321,16 +326,19 @@ export function ChatScreen({ navigation, route }: Props) {
               contentContainerStyle={styles.chips}
               keyboardShouldPersistTaps="handled"
             >
-              <Chip label="Есть ли повод для беспокойства?" onPress={() => onChip('Есть ли повод для беспокойства?')} />
-              <Chip label={`Где сейчас ${pet.name}?`} onPress={() => onChip(`Где сейчас ${pet.name}?`)} />
+              <Chip label={t('chat_concernChip')} onPress={() => onChip(t('chat_concernChip'))} />
+              <Chip
+                label={t('chat_locationChip', { name: pet.name })}
+                onPress={() => onChip(t('chat_locationChip', { name: pet.name }))}
+              />
             </ScrollView>
           ) : null}
 
           {menuOpen ? (
             <View style={styles.menu}>
-              <MenuItem icon="camera-outline" label="Камера" onPress={() => onAttach('camera')} />
-              <MenuItem icon="image-outline" label="Фото" onPress={() => onAttach('gallery')} />
-              <MenuItem icon="document-outline" label="Файл" onPress={() => onAttach('file')} />
+              <MenuItem icon="camera-outline" label={t('chat_camera')} onPress={() => onAttach('camera')} />
+              <MenuItem icon="image-outline" label={t('chat_photo')} onPress={() => onAttach('gallery')} />
+              <MenuItem icon="document-outline" label={t('chat_file')} onPress={() => onAttach('file')} />
             </View>
           ) : null}
 
@@ -338,14 +346,14 @@ export function ChatScreen({ navigation, route }: Props) {
             <Pressable
               style={[styles.round, menuOpen && styles.roundActive]}
               onPress={() => setMenuOpen((value) => !value)}
-              accessibilityLabel="Вложения"
+              accessibilityLabel={t('chat_attachments')}
             >
               <Ionicons name="attach" size={18} color={colors.white} />
             </Pressable>
             <TextInput
               value={draft}
               onChangeText={onChangeDraft}
-              placeholder={listening ? 'Слушаю…' : `Спросить про ${pet.name}`}
+              placeholder={listening ? t('chat_listening') : t('chat_askAbout', { name: pet.name })}
               placeholderTextColor={colors.muted}
               style={styles.input}
               multiline
@@ -354,14 +362,14 @@ export function ChatScreen({ navigation, route }: Props) {
               returnKeyType="send"
             />
             {canSend ? (
-              <Pressable style={[styles.round, styles.sendBtn]} onPress={onSend} accessibilityLabel="Отправить">
+              <Pressable style={[styles.round, styles.sendBtn]} onPress={onSend} accessibilityLabel={t('common_send')}>
                 <Ionicons name="arrow-up" size={18} color={colors.white} />
               </Pressable>
             ) : (
               <Pressable
                 style={[styles.round, styles.micBtn, listening && styles.micListening]}
                 onPress={onMic}
-                accessibilityLabel="Голосовой ввод"
+                accessibilityLabel={t('chat_voiceInput')}
               >
                 <Ionicons name={listening ? 'stop' : 'mic'} size={18} color={colors.white} />
               </Pressable>
@@ -374,11 +382,11 @@ export function ChatScreen({ navigation, route }: Props) {
 }
 
 function MessageBody({ text }: { text: string }) {
-  const parts = text.split(/(\d+%|спокоен|нормы|норме)/gi);
+  const parts = text.split(/(\d+%|спокоен|нормы|норме|calm|normal)/gi);
   return (
     <Text style={styles.text}>
       {parts.map((part, index) => {
-        const highlight = /^(\d+%|спокоен|нормы|норме)$/i.test(part);
+        const highlight = /^(\d+%|спокоен|нормы|норме|calm|normal)$/i.test(part);
         return (
           <Text key={`${part}-${index}`} style={highlight ? styles.ok : undefined}>
             {part}

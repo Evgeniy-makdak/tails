@@ -4,19 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
+import type { MessageKey } from '../../i18n';
 import { colors, spacing, type } from '../../theme';
 
 type Props = {
   onNext: () => void;
 };
 
-const ITEMS = [
-  { icon: 'location-outline' as const, title: 'Live геопозиция и безопасные зоны', copy: 'Дом, двор и места, где питомцу можно гулять спокойно' },
-  { icon: 'pulse-outline' as const, title: 'Анализ состояния', copy: 'Пульс, сон и движение — чтобы понимать самочувствие' },
-  { icon: 'notifications-outline' as const, title: 'SOS-уведомления', copy: 'Мгновенный сигнал, если питомец вне зоны или в стрессе' },
+const ITEMS: { icon: 'location-outline' | 'pulse-outline' | 'notifications-outline'; title: MessageKey; copy: MessageKey }[] = [
+  { icon: 'location-outline', title: 'onboarding_featureLocationTitle', copy: 'onboarding_featureLocationCopy' },
+  { icon: 'pulse-outline', title: 'onboarding_featureHealthTitle', copy: 'onboarding_featureHealthCopy' },
+  { icon: 'notifications-outline', title: 'onboarding_featureSosTitle', copy: 'onboarding_featureSosCopy' },
 ];
 
 export function FeaturesScreen({ onNext }: Props) {
+  const { t } = useI18n();
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
@@ -27,21 +31,21 @@ export function FeaturesScreen({ onNext }: Props) {
         <View style={styles.dash} />
       </View>
       <View style={styles.body}>
-        <Text style={styles.title}>Понимайте питомца лучше</Text>
+        <Text style={styles.title}>{t('onboarding_featuresTitle')}</Text>
         {ITEMS.map((item) => (
           <View key={item.title} style={styles.row}>
             <View style={styles.icon}>
               <Ionicons name={item.icon} size={22} color={colors.purple} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemCopy}>{item.copy}</Text>
+              <Text style={styles.itemTitle}>{t(item.title)}</Text>
+              <Text style={styles.itemCopy}>{t(item.copy)}</Text>
             </View>
           </View>
         ))}
       </View>
       <View style={styles.footer}>
-        <Button label="Далее" onPress={onNext} />
+        <Button label={t('common_next')} onPress={onNext} />
       </View>
     </SafeAreaView>
   );

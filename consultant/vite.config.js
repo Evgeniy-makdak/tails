@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Tailio Консультант',
-        short_name: 'Tailio Desk',
-        description: 'Кабинет консультанта Tailio',
+        name: 'Taily Консультант',
+        short_name: 'Taily Desk',
+        description: 'Кабинет консультанта Taily',
         theme_color: '#8B7FFF',
         background_color: '#F6F5F2',
         display: 'standalone',

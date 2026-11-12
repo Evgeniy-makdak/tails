@@ -26,6 +26,7 @@ import {
   type MapPolygon,
   type MapPolyline,
 } from '../../map';
+import { useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList, MainTabParamList } from '../../types/navigation';
@@ -49,6 +50,7 @@ type SosActionSheet = 'help' | 'notify' | 'notifySent' | 'shareDone' | 'route' |
 const LIVE_MAP = MAP_ENGINE === 'maplibre';
 
 export function MapScreen() {
+  const { t, locale } = useI18n();
   const navigation = useNavigation<MapNav>();
   const pet = useActivePet();
   const updatePet = useAppStore((state) => state.updatePet);
@@ -141,7 +143,7 @@ export function MapScreen() {
     }
     const track = await finishWalk();
     if (track) {
-      setWalkHint(`Прогулка сохранена · ${(track.distanceM / 1000).toFixed(1)} км`);
+      setWalkHint(t('map_walkSaved', { distance: (track.distanceM / 1000).toFixed(1) }));
       setTimeout(() => setWalkHint(null), 3500);
     }
   };
@@ -177,7 +179,7 @@ export function MapScreen() {
     setSoundOn(true);
     const ok = await playPetCall(pet.kind);
     if (!ok) {
-      setShareHint(pet.kind === 'cat' ? 'Мяу! (демо без звука на этой платформе)' : 'Гав! (демо без звука на этой платформе)');
+      setShareHint(pet.kind === 'cat' ? t('map_catSoundDemo') : t('map_dogSoundDemo'));
       setActionSheet('shareDone');
     }
     setTimeout(() => setSoundOn(false), 3200);
@@ -202,7 +204,7 @@ export function MapScreen() {
   const stopSearch = () => setSosPhase('off');
   const liveCoords = coordsLabel ?? `${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)}`;
   const updatedLabel = snapshot?.point.updatedAt
-    ? new Date(snapshot.point.updatedAt).toLocaleTimeString('ru-RU', {
+    ? new Date(snapshot.point.updatedAt).toLocaleTimeString(locale === 'en' ? 'en-US' : 'ru-RU', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -210,7 +212,7 @@ export function MapScreen() {
     : null;
   const notifyPreview = buildNotifyMessage(pet.name, liveCoords);
   const sourceHint =
-    source === 'device' ? 'Live' : source === 'api' ? 'Ошейник' : null;
+    source === 'device' ? t('map_live') : source === 'api' ? t('map_collar') : null;
 
   const zoomIn = () => {
     if (LIVE_MAP) {
@@ -245,9 +247,9 @@ export function MapScreen() {
     }
     setShareHint(
       result.method === 'clipboard'
-        ? 'Ссылка на точку скопирована в буфер обмена.'
+        ? t('map_linkCopied')
         : result.method === 'share'
-          ? 'Геолокация отправлена.'
+          ? t('map_locationSent')
           : result.message,
     );
     setActionSheet('shareDone');
@@ -263,8 +265,8 @@ export function MapScreen() {
     const result = await callHelpHotline();
     setShareHint(
       result.ok
-        ? `Набираем ${result.detail}…`
-        : `Демо: линия поддержки Tailio — ${result.detail}`,
+        ? t('map_calling', { phone: result.detail })
+        : t('map_demoHelpLine', { phone: result.detail }),
     );
     setActionSheet('callInfo');
   };
@@ -276,9 +278,9 @@ export function MapScreen() {
 
   const toast =
     sosPhase === 'found'
-      ? `${pet.name} найден. Экстренный поиск завершён.`
+      ? t('map_petFound', { name: pet.name })
       : sosPhase === 'continue'
-        ? 'Поиск продолжится: сообщим о новом сигнале'
+        ? t('map_searchWillContinue')
         : null;
 
   return (
@@ -297,7 +299,9 @@ export function MapScreen() {
         <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
           <View style={styles.live}>
             <View style={[styles.liveDot, sosActive && styles.liveDotSos]} />
-            <Text style={styles.liveText}>Live · {pet.battery || 67}%</Text>
+            <Text style={styles.liveText}>
+              {t('map_live')} · {pet.battery || 67}%
+            </Text>
           </View>
           <Text style={styles.coords}>
             {liveCoords}
@@ -320,7 +324,7 @@ export function MapScreen() {
         {walkActive && !sosActive ? (
           <View style={styles.recToast}>
             <View style={styles.recDot} />
-            <Text style={styles.recToastText}>Идёт запись прогулки</Text>
+            <Text style={styles.recToastText}>{t('map_walkRecording')}</Text>
           </View>
         ) : null}
 
@@ -330,7 +334,7 @@ export function MapScreen() {
           <>
             <View style={styles.sosTrail} />
             <View style={styles.distanceTag}>
-              <Text style={styles.distanceText}>30 м</Text>
+              <Text style={styles.distanceText}>{t('map_distanceMeters', { value: 30 })}</Text>
             </View>
             <View style={styles.sosPinGhost} />
           </>
@@ -372,21 +376,21 @@ export function MapScreen() {
             <Text style={styles.cardName}>{pet.name}</Text>
             <Text style={[styles.cardMeta, sosActive && styles.cardMetaSos]}>
               {sosActive
-                ? `Ищем ${pet.name} • Обновлено 15 сек. назад`
-                : 'Все хорошо • Обновлено 15 сек. назад'}
+                ? t('map_searchingUpdated', { name: pet.name })
+                : t('map_allGoodUpdated')}
             </Text>
           </View>
           <Pressable
             style={[styles.iconBtn, soundOn && styles.iconBtnOn]}
             onPress={toggleSound}
-            accessibilityLabel="Подать звуковой сигнал"
+            accessibilityLabel={t('map_soundAccessibility')}
           >
             <Ionicons name={soundOn ? 'volume-high' : 'volume-high-outline'} size={18} color={soundOn ? colors.purple : colors.ink} />
           </Pressable>
           <Pressable
             style={[styles.iconBtn, ledOn && styles.iconBtnOn]}
             onPress={toggleLight}
-            accessibilityLabel="Включить свет ошейника"
+            accessibilityLabel={t('map_lightAccessibility')}
           >
             <Ionicons name={ledOn ? 'bulb' : 'bulb-outline'} size={18} color={ledOn ? '#E5A100' : colors.ink} />
           </Pressable>
@@ -397,10 +401,10 @@ export function MapScreen() {
             <Button
               label={
                 walkUploading
-                  ? 'Сохраняем…'
+                  ? t('map_saving')
                   : walkActive
-                    ? 'Завершить прогулку'
-                    : 'Начать прогулку'
+                    ? t('map_finishWalk')
+                    : t('map_startWalk')
               }
               variant={walkActive ? 'danger' : 'primary'}
               disabled={walkUploading}
@@ -413,20 +417,20 @@ export function MapScreen() {
               <View style={[styles.miniIcon, { backgroundColor: '#FDECEC' }]}>
                 <Ionicons name="notifications" size={18} color={colors.red} />
               </View>
-              <Text style={styles.actionLabel}>Экстренный поиск</Text>
+              <Text style={styles.actionLabel}>{t('map_emergencySearch')}</Text>
             </Pressable>
             <View style={styles.actionRow}>
               <Pressable style={styles.halfAction} onPress={() => navigation.navigate('Geozones')}>
                 <View style={[styles.miniIcon, { backgroundColor: colors.greenSoft }]}>
                   <Ionicons name="home-outline" size={18} color={colors.green} />
                 </View>
-                <Text style={styles.halfLabel}>Дом и геозоны</Text>
+                <Text style={styles.halfLabel}>{t('map_homeAndZones')}</Text>
               </Pressable>
               <Pressable style={styles.halfAction} onPress={() => navigation.navigate('WalkHistory')}>
                 <View style={[styles.miniIcon, { backgroundColor: colors.blueSoft }]}>
                   <Ionicons name="git-branch-outline" size={18} color="#3B82F6" />
                 </View>
-                <Text style={styles.halfLabel}>История перемещений</Text>
+                <Text style={styles.halfLabel}>{t('map_history')}</Text>
               </Pressable>
             </View>
           </View>
@@ -434,111 +438,110 @@ export function MapScreen() {
 
         {expanded && sosActive ? (
           <View style={styles.sosPanel}>
-            <Text style={styles.sosTitle}>SOS-режим</Text>
+            <Text style={styles.sosTitle}>{t('map_sosMode')}</Text>
             <View style={styles.sosCards}>
               <Pressable style={styles.sosCard} onPress={onNotifyRelatives}>
                 <Ionicons name="flag-outline" size={22} color={colors.red} />
-                <Text style={styles.sosCardText}>Сообщить близким</Text>
+                <Text style={styles.sosCardText}>{t('map_notifyRelatives')}</Text>
               </Pressable>
               <Pressable style={styles.sosCard} onPress={onShareGeolocation}>
                 <Ionicons name="share-outline" size={22} color={colors.red} />
-                <Text style={styles.sosCardText}>Поделиться геолокацией</Text>
+                <Text style={styles.sosCardText}>{t('map_shareLocation')}</Text>
               </Pressable>
             </View>
             <Pressable style={styles.callBtn} onPress={onContactHelp}>
-              <Text style={styles.callText}>Связаться со службой помощи</Text>
+              <Text style={styles.callText}>{t('map_contactHelp')}</Text>
             </Pressable>
-            <Button label="Выйти из режима" variant="ghost" onPress={exitSosAsk} />
+            <Button label={t('map_exitMode')} variant="ghost" onPress={exitSosAsk} />
           </View>
         ) : null}
       </View>
 
       <InAppSheet visible={sosPhase === 'info'} onClose={() => setSosPhase('off')}>
-        <Text style={styles.sheetTitle}>Как работает экстренный поиск?</Text>
+        <Text style={styles.sheetTitle}>{t('map_sosHowTitle')}</Text>
         <Text style={styles.sheetCopy}>
-          Tailio будет чаще обновлять геолокацию, чтобы быстрее найти {pet.name}. Это сильнее расходует батарею
-          ошейника.
+          {t('map_sosHowCopy', { name: pet.name })}
         </Text>
-        <Button label="Понятно" onPress={confirmSos} />
+        <Button label={t('map_understood')} onPress={confirmSos} />
       </InAppSheet>
 
       <InAppSheet visible={sosPhase === 'askFound'} onClose={() => setSosPhase('active')}>
-        <Text style={styles.sheetTitle}>Вы нашли {pet.name}?</Text>
+        <Text style={styles.sheetTitle}>{t('map_foundQuestion', { name: pet.name })}</Text>
         <View style={styles.askRow}>
           <Pressable style={styles.askNo} onPress={markNotFound}>
-            <Text style={styles.askNoText}>Нет</Text>
+            <Text style={styles.askNoText}>{t('map_no')}</Text>
           </Pressable>
           <Pressable style={styles.askYes} onPress={markFound}>
-            <Text style={styles.askYesText}>Да</Text>
+            <Text style={styles.askYesText}>{t('map_yes')}</Text>
           </Pressable>
         </View>
       </InAppSheet>
 
       <InAppSheet visible={sosPhase === 'notFound'} onClose={() => setSosPhase('active')}>
-        <Text style={styles.sheetTitle}>Пока {pet.name} не нашли</Text>
+        <Text style={styles.sheetTitle}>{t('map_notFoundTitle', { name: pet.name })}</Text>
         <Text style={styles.sheetCopy}>
-          Поиск продолжается. Мы сообщим, когда появится новый сигнал ошейника.
+          {t('map_notFoundCopy')}
         </Text>
-        <Button label="Продолжить поиск" onPress={continueSearch} />
-        <Button label="Получить помощь" variant="soft" onPress={onContactHelp} />
-        <Button label="Поделиться геолокацией" variant="ghost" onPress={onShareGeolocation} />
+        <Button label={t('map_continueSearch')} onPress={continueSearch} />
+        <Button label={t('map_getHelp')} variant="soft" onPress={onContactHelp} />
+        <Button label={t('map_shareLocation')} variant="ghost" onPress={onShareGeolocation} />
       </InAppSheet>
 
       <InAppSheet visible={sosPhase === 'continue'} onClose={stopSearch}>
-        <Text style={styles.sheetTitle}>Продолжаем поиск</Text>
-        <Text style={styles.sheetCopy}>• Обновляем точку при каждом сигнале</Text>
-        <Text style={styles.sheetCopy}>• Уведомляем близких о статусе</Text>
-        <Text style={styles.sheetCopy}>• Держите ошейник включённым</Text>
-        <Text style={[styles.blockTitle, { marginTop: 8 }]}>Что можно сделать</Text>
+        <Text style={styles.sheetTitle}>{t('map_searchContinues')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_updateEachSignal')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_notifyStatus')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_keepCollarOn')}</Text>
+        <Text style={[styles.blockTitle, { marginTop: 8 }]}>{t('map_whatCanDo')}</Text>
         <View style={styles.sosGrid}>
-          <SosAction icon="volume-high-outline" label="Громкий сигнал" onPress={toggleSound} />
-          <SosAction icon="navigate-outline" label="Построить маршрут" onPress={() => setActionSheet('route')} />
-          <SosAction icon="flag-outline" label="Сообщить близким" onPress={onNotifyRelatives} />
+          <SosAction icon="volume-high-outline" label={t('map_loudSignal')} onPress={toggleSound} />
+          <SosAction icon="navigate-outline" label={t('map_buildRoute')} onPress={() => setActionSheet('route')} />
+          <SosAction icon="flag-outline" label={t('map_notifyRelatives')} onPress={onNotifyRelatives} />
         </View>
         <Pressable style={styles.stopBtn} onPress={stopSearch}>
-          <Text style={styles.stopText}>Остановить поиск</Text>
+          <Text style={styles.stopText}>{t('map_stopSearch')}</Text>
         </Pressable>
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'help'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Служба помощи</Text>
-        <Text style={styles.sheetCopy}>Связаться по поводу {pet.name}. Координаты: {liveCoords}</Text>
-        <Button label={`Позвонить · ${HELP_HOTLINE_DISPLAY}`} onPress={() => void onCallHelp()} />
-        <Button label="Чат со специалистом" variant="soft" onPress={onOpenHelpChat} />
-        <Button label="Отмена" variant="ghost" onPress={() => setActionSheet(null)} />
+        <Text style={styles.sheetTitle}>{t('map_helpService')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_helpCoordinates', { name: pet.name, coordinates: liveCoords })}</Text>
+        <Button label={t('map_call', { phone: HELP_HOTLINE_DISPLAY })} onPress={() => void onCallHelp()} />
+        <Button label={t('map_specialistChat')} variant="soft" onPress={onOpenHelpChat} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setActionSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'notify'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Сообщить близким</Text>
-        <Text style={styles.sheetCopy}>Отправить уведомление: {contactNames}?</Text>
+        <Text style={styles.sheetTitle}>{t('map_notifyRelatives')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_notifyQuestion', { names: contactNames })}</Text>
         <Text style={styles.sheetCopy}>«{notifyPreview}»</Text>
-        <Button label="Отправить" onPress={onConfirmNotify} />
-        <Button label="Отмена" variant="ghost" onPress={() => setActionSheet(null)} />
+        <Button label={t('common_send')} onPress={onConfirmNotify} />
+        <Button label={t('common_cancel')} variant="ghost" onPress={() => setActionSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'notifySent'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Отправлено</Text>
-        <Text style={styles.sheetCopy}>Близкие уведомлены о поиске {pet.name}.</Text>
-        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
+        <Text style={styles.sheetTitle}>{t('map_sent')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_relativesNotified', { name: pet.name })}</Text>
+        <Button label={t('common_ok')} onPress={() => setActionSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'shareDone'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Готово</Text>
+        <Text style={styles.sheetTitle}>{t('map_ready')}</Text>
         <Text style={styles.sheetCopy}>{shareHint}</Text>
-        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
+        <Button label={t('common_ok')} onPress={() => setActionSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'callInfo'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Звонок</Text>
+        <Text style={styles.sheetTitle}>{t('map_callTitle')}</Text>
         <Text style={styles.sheetCopy}>{shareHint}</Text>
-        <Button label="Чат со специалистом" variant="soft" onPress={onOpenHelpChat} />
-        <Button label="Закрыть" variant="ghost" onPress={() => setActionSheet(null)} />
+        <Button label={t('map_specialistChat')} variant="soft" onPress={onOpenHelpChat} />
+        <Button label={t('common_close')} variant="ghost" onPress={() => setActionSheet(null)} />
       </InAppSheet>
 
       <InAppSheet visible={actionSheet === 'route'} onClose={() => setActionSheet(null)}>
-        <Text style={styles.sheetTitle}>Маршрут</Text>
-        <Text style={styles.sheetCopy}>Маршрут до последней точки {pet.name} ({liveCoords}).</Text>
-        <Button label="Хорошо" onPress={() => setActionSheet(null)} />
+        <Text style={styles.sheetTitle}>{t('map_route')}</Text>
+        <Text style={styles.sheetCopy}>{t('map_routeCopy', { name: pet.name, coordinates: liveCoords })}</Text>
+        <Button label={t('common_ok')} onPress={() => setActionSheet(null)} />
       </InAppSheet>
     </View>
   );

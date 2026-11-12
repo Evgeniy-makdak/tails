@@ -311,7 +311,7 @@ export function claimConversation(conversationId, consultantId) {
   const consultant = findById('consultants', consultantId);
   insertSystemMessage(
     conversationId,
-    `Консультант ${consultant?.name || 'Tailio'} подключился к диалогу.`,
+    `Консультант ${consultant?.name || 'Taily'} подключился к диалогу.`,
   );
 
   return { ok: true, conversation: getConversationById(conversationId) };

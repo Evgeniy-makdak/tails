@@ -4,6 +4,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../components/ui/Button';
+import { useI18n } from '../../i18n';
 import { colors, radius, spacing, type } from '../../theme';
 
 type Props = {
@@ -12,17 +13,18 @@ type Props = {
 };
 
 export function RegisterScreen({ onRegister, onBack }: Props) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
-      <Text style={styles.title}>Новый хвост в семье</Text>
-      <Text style={styles.copy}>Создайте аккаунт — карточки питомцев появятся на главной.</Text>
+      <Text style={styles.title}>{t('auth_registerTitle')}</Text>
+      <Text style={styles.copy}>{t('auth_registerCopy')}</Text>
       <View style={styles.form}>
         <TextInput
-          placeholder="Как к вам обращаться"
+          placeholder={t('auth_namePlaceholder')}
           placeholderTextColor={colors.muted}
           style={styles.input}
           value={name}
@@ -31,14 +33,14 @@ export function RegisterScreen({ onRegister, onBack }: Props) {
         <TextInput
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder="Почта"
+          placeholder={t('auth_email')}
           placeholderTextColor={colors.muted}
           style={styles.input}
           value={email}
           onChangeText={setEmail}
         />
-        <Button label="Зарегистрироваться" onPress={onRegister} />
-        <Button label="У меня уже есть вход" variant="ghost" onPress={onBack} />
+        <Button label={t('auth_register')} onPress={onRegister} />
+        <Button label={t('auth_haveLogin')} variant="ghost" onPress={onBack} />
       </View>
     </SafeAreaView>
   );

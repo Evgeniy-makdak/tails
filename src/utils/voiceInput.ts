@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { translate, useLocaleStore, type MessageKey } from '../i18n';
+
 type VoiceResult = {
   transcript: string;
   demo?: boolean;
@@ -30,11 +32,7 @@ function getWebSpeechCtor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-const DEMO_PHRASES = [
-  'У питомца снижена активность, это повод для беспокойства?',
-  'Подскажите, что делать, если температура выше обычной?',
-  'Куда лучше обратиться, если питомец хромает?',
-];
+const DEMO_PHRASE_KEYS: MessageKey[] = ['chat_voiceDemo1', 'chat_voiceDemo2', 'chat_voiceDemo3'];
 
 /**
  * Starts voice capture. Uses Web Speech API when available;
@@ -117,9 +115,9 @@ export function startVoiceCapture(options?: {
 
     // Native / unsupported: simulate short listening window, then demo phrase.
     timer = setTimeout(() => {
-      const phrase =
-        DEMO_PHRASES[Math.floor(Math.random() * DEMO_PHRASES.length)] ??
-        'У питомца снижена активность, это повод для беспокойства?';
+      const phraseKey =
+        DEMO_PHRASE_KEYS[Math.floor(Math.random() * DEMO_PHRASE_KEYS.length)] ?? 'chat_voiceDemo1';
+      const phrase = translate(useLocaleStore.getState().locale, phraseKey);
       options?.onPartial?.(phrase);
       finish({ transcript: phrase, demo: Platform.OS !== 'web' });
     }, Math.min(2500, timeoutMs));

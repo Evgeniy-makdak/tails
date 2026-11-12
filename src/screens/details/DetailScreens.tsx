@@ -7,29 +7,31 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { scheduleEvents } from '../../data/mock';
+import { useI18n, type MessageKey } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
 import type { MetricId, QuickActionKind } from '../../types/pet';
 
-const LABELS: Record<QuickActionKind, string> = {
-  walk: 'Прогулка',
-  toilet: 'Туалет',
-  training: 'Тренировка',
-  other: 'Другое событие',
+const LABELS: Record<QuickActionKind, MessageKey> = {
+  walk: 'details_walk',
+  toilet: 'details_toilet',
+  training: 'details_training',
+  other: 'details_other',
 };
 
-const METRIC_COPY: Record<MetricId, { title: string; unit: (petName: string) => string }> = {
-  pulse: { title: 'Пульс', unit: () => 'уд/мин за день' },
-  pressure: { title: 'Давление', unit: () => 'мм рт. ст.' },
-  temperature: { title: 'Температура', unit: () => '°C' },
-  sleep: { title: 'Сон', unit: () => 'за прошлую ночь' },
-  steps: { title: 'Шаги', unit: () => 'шагов сегодня' },
-  running: { title: 'Бег', unit: () => 'минут активности' },
-  rest: { title: 'Отдых', unit: () => 'часов спокойствия' },
+const METRIC_COPY: Record<MetricId, { title: MessageKey; unit: MessageKey }> = {
+  pulse: { title: 'health_pulse', unit: 'details_unitPulse' },
+  pressure: { title: 'details_pressure', unit: 'details_unitPressure' },
+  temperature: { title: 'health_temperature', unit: 'details_unitTemperature' },
+  sleep: { title: 'health_sleep', unit: 'details_unitSleep' },
+  steps: { title: 'health_steps', unit: 'details_unitSteps' },
+  running: { title: 'health_running', unit: 'details_unitRunning' },
+  rest: { title: 'health_rest', unit: 'details_unitRest' },
 };
 
 export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppStackParamList, 'Notifications'>) {
+  const { t } = useI18n();
   const items = useAppStore((state) => state.notifications);
   const markNotificationsRead = useAppStore((state) => state.markNotificationsRead);
   const markNotificationsUnread = useAppStore((state) => state.markNotificationsUnread);
@@ -51,7 +53,7 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title="Уведомления" onBack={() => navigation.goBack()} />
+      <Header title={t('details_notifications')} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
         {items.map((item) => {
           const unread = !item.read;
@@ -77,7 +79,7 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
           );
         })}
         <Button
-          label={markUnreadMode ? 'Отметить непрочитанными' : 'Отметить прочитанными'}
+          label={markUnreadMode ? t('details_markUnread') : t('details_markRead')}
           disabled={!canSubmit}
           onPress={() => {
             if (markUnreadMode) {
@@ -94,19 +96,20 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
 }
 
 export function AiSummaryScreen({ navigation }: NativeStackScreenProps<AppStackParamList, 'AiSummary'>) {
+  const { t } = useI18n();
   const pet = useActivePet();
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title="Сводка Tailio" onBack={() => navigation.goBack()} />
+      <Header title={t('details_summary')} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Card>
-          <Text style={styles.rowTitle}>Сегодня всё хорошо</Text>
+          <Text style={styles.rowTitle}>{t('details_todayGood')}</Text>
           <Text style={styles.copy}>{pet.aiSummary}</Text>
         </Card>
         <Card>
-          <Text style={styles.rowTitle}>Что изменилось</Text>
-          <Text style={styles.copy}>Активность −12% · Сон +15 мин · Пульс в норме · Спокойствие в норме</Text>
+          <Text style={styles.rowTitle}>{t('details_changed')}</Text>
+          <Text style={styles.copy}>{t('details_changedCopy')}</Text>
         </Card>
       </View>
     </SafeAreaView>
@@ -114,34 +117,36 @@ export function AiSummaryScreen({ navigation }: NativeStackScreenProps<AppStackP
 }
 
 export function MetricDetailScreen({ navigation, route }: NativeStackScreenProps<AppStackParamList, 'MetricDetail'>) {
+  const { t, locale } = useI18n();
   const pet = useActivePet();
-  const copy = METRIC_COPY[route.params.metricId];
+  const metricId = route.params.metricId as MetricId;
+  const copy = METRIC_COPY[metricId];
   const value =
-    route.params.metricId === 'pulse'
+    metricId === 'pulse'
       ? String(pet.pulse)
-      : route.params.metricId === 'pressure'
+      : metricId === 'pressure'
         ? pet.pressure
-        : route.params.metricId === 'temperature'
+        : metricId === 'temperature'
           ? String(pet.temperature)
-          : route.params.metricId === 'sleep'
+          : metricId === 'sleep'
             ? pet.sleepLabel
-            : route.params.metricId === 'steps'
-              ? pet.steps.toLocaleString('ru-RU')
-              : route.params.metricId === 'running'
-                ? `${pet.runningMinutes} мин`
-                : `${pet.restHours} ч`;
+            : metricId === 'steps'
+              ? pet.steps.toLocaleString(locale === 'en' ? 'en-US' : 'ru-RU')
+              : metricId === 'running'
+                ? t('common_minutesShort', { value: pet.runningMinutes })
+                : t('common_hoursShort', { value: pet.restHours });
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title={copy.title} onBack={() => navigation.goBack()} />
+      <Header title={t(copy.title)} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Text style={styles.hero}>{value}</Text>
-        <Text style={styles.copy}>{copy.unit(pet.name)}</Text>
+        <Text style={styles.copy}>{t(copy.unit)}</Text>
         <Card>
-          <Text style={styles.rowTitle}>День / Неделя / Месяц</Text>
+          <Text style={styles.rowTitle}>{t('details_period')}</Text>
           <Text style={styles.copy}>
-            График по макету подключим на следующем шаге. Сейчас это карточка показателя {pet.name}.
+            {t('details_chartPlaceholder', { name: pet.name })}
           </Text>
         </Card>
       </View>
@@ -150,6 +155,7 @@ export function MetricDetailScreen({ navigation, route }: NativeStackScreenProps
 }
 
 export function ReminderDetailScreen({ navigation, route }: NativeStackScreenProps<AppStackParamList, 'ReminderDetail'>) {
+  const { t } = useI18n();
   const reminder = useAppStore((state) => state.reminders.find((item) => item.id === route.params.reminderId));
   const toggleReminder = useAppStore((state) => state.toggleReminder);
 
@@ -160,14 +166,14 @@ export function ReminderDetailScreen({ navigation, route }: NativeStackScreenPro
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title="Напоминание" onBack={() => navigation.goBack()} />
+      <Header title={t('details_reminder')} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Card>
           <Text style={styles.rowTitle}>{reminder.title}</Text>
           <Text style={styles.copy}>{reminder.timeLabel}</Text>
         </Card>
         <Button
-          label={reminder.done ? 'Вернуть в список' : 'Отметить выполненным'}
+          label={reminder.done ? t('details_returnToList') : t('details_markDone')}
           onPress={() => toggleReminder(reminder.id)}
         />
       </View>
@@ -176,12 +182,13 @@ export function ReminderDetailScreen({ navigation, route }: NativeStackScreenPro
 }
 
 export function EventDetailScreen({ navigation, route }: NativeStackScreenProps<AppStackParamList, 'EventDetail'>) {
+  const { t } = useI18n();
   const event = scheduleEvents.find((item) => item.id === route.params.eventId);
   if (!event) return null;
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title="Событие" onBack={() => navigation.goBack()} />
+      <Header title={t('details_event')} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Card>
           <Text style={styles.rowTitle}>{event.title}</Text>
@@ -196,22 +203,24 @@ export function EventDetailScreen({ navigation, route }: NativeStackScreenProps<
 }
 
 export function AddLogScreen({ navigation, route }: NativeStackScreenProps<AppStackParamList, 'AddLog'>) {
+  const { t } = useI18n();
   const addLog = useAppStore((state) => state.addLog);
   const pet = useActivePet();
-  const kind = route.params.kind ?? 'other';
+  const kind = (route.params.kind ?? 'other') as QuickActionKind;
+  const labelKey = LABELS[kind];
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title={LABELS[kind]} onBack={() => navigation.goBack()} />
+      <Header title={t(labelKey)} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Card>
           <Text style={styles.copy}>
-            Записать «{LABELS[kind].toLowerCase()}» для {pet.name}? Событие появится в ленте дня.
+            {t('details_eventConfirm', { event: t(labelKey).toLowerCase(), name: pet.name })}
           </Text>
         </Card>
         <Button
-          label="Сохранить"
+          label={t('common_save')}
           onPress={() => {
             addLog(kind);
             navigation.goBack();
@@ -223,14 +232,15 @@ export function AddLogScreen({ navigation, route }: NativeStackScreenProps<AppSt
 }
 
 export function DocumentsScreen({ navigation }: NativeStackScreenProps<AppStackParamList, 'Documents'>) {
+  const { t } = useI18n();
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar style="dark" />
-      <Header title="Документы" onBack={() => navigation.goBack()} />
+      <Header title={t('details_documents')} onBack={() => navigation.goBack()} />
       <View style={styles.content}>
         <Card>
-          <Text style={styles.rowTitle}>Пока пусто</Text>
-          <Text style={styles.copy}>Сюда добавим паспорт, прививки и анализы — как в блоке Figma «Добавьте документы».</Text>
+          <Text style={styles.rowTitle}>{t('common_empty')}</Text>
+          <Text style={styles.copy}>{t('details_documentsCopy')}</Text>
         </Card>
       </View>
     </SafeAreaView>
@@ -238,10 +248,11 @@ export function DocumentsScreen({ navigation }: NativeStackScreenProps<AppStackP
 }
 
 function Header({ title, onBack }: { title: string; onBack: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={styles.header}>
       <Pressable onPress={onBack} hitSlop={10}>
-        <Text style={styles.back}>Назад</Text>
+        <Text style={styles.back}>{t('common_back')}</Text>
       </Pressable>
       <Text style={styles.headerTitle}>{title}</Text>
       <View style={{ width: 48 }} />

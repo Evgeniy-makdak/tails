@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '../../i18n';
+import type { MessageKey } from '../../i18n';
 import { colors, type } from '../../theme';
 
 type Day = {
@@ -8,8 +10,17 @@ type Day = {
   date: number;
 };
 
-function buildWeek(): Day[] {
-  const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEK_KEYS: MessageKey[] = [
+  'week_mon',
+  'week_tue',
+  'week_wed',
+  'week_thu',
+  'week_fri',
+  'week_sat',
+  'week_sun',
+];
+
+function buildWeek(labels: string[]): Day[] {
   const today = new Date();
   const mondayOffset = (today.getDay() + 6) % 7;
   return labels.map((label, index) => {
@@ -25,14 +36,15 @@ type Props = {
 };
 
 export function WeekStrip({ value, onChange }: Props) {
-  const days = buildWeek();
+  const { t } = useI18n();
+  const days = buildWeek(WEEK_KEYS.map((key) => t(key)));
 
   return (
     <View style={styles.row}>
       {days.map((day) => {
         const active = day.offset === value;
         return (
-          <Pressable key={day.label} onPress={() => onChange(day.offset)} style={styles.item}>
+          <Pressable key={`${day.offset}-${day.label}`} onPress={() => onChange(day.offset)} style={styles.item}>
             <Text style={styles.label}>{day.label}</Text>
             <View style={[styles.bubble, active && styles.bubbleActive]}>
               <Text style={[styles.date, active && styles.dateActive]}>{day.date}</Text>

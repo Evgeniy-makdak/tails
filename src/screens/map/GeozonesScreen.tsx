@@ -17,6 +17,7 @@ import {
   boundsToPolygon,
   mapConfig,
 } from '../../map';
+import { useI18n } from '../../i18n';
 import { useActivePet, useAppStore } from '../../store/useAppStore';
 import { colors, radius, spacing, type } from '../../theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -28,6 +29,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Geozones'>;
 const LIVE_MAP = MAP_ENGINE === 'maplibre';
 
 export function GeozonesScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<Filter>('all');
   const [hint, setHint] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export function GeozonesScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Дом и геозоны</Text>
+        <Text style={styles.title}>{t('zones_title')}</Text>
         <Pressable onPress={() => navigation.navigate('DrawZone', { kind: 'safe' })}>
           <Ionicons name="add" size={24} color={colors.ink} />
         </Pressable>
@@ -101,9 +103,9 @@ export function GeozonesScreen({ navigation }: Props) {
       <View style={styles.tabs}>
         {(
           [
-            ['all', 'Все'],
-            ['safe', 'Безопасные'],
-            ['danger', 'Опасные'],
+            ['all', t('common_all')],
+            ['safe', t('zones_safe')],
+            ['danger', t('zones_danger')],
           ] as const
         ).map(([key, label]) => (
           <Pressable key={key} onPress={() => setFilter(key)} style={[styles.tab, filter === key && styles.tabOn]}>
@@ -122,7 +124,7 @@ export function GeozonesScreen({ navigation }: Props) {
           />
           {polygons.length === 0 ? (
             <View style={styles.mapEmpty} pointerEvents="none">
-              <Text style={styles.mapEmptyText}>Пока нет зон на карте — создайте первую</Text>
+              <Text style={styles.mapEmptyText}>{t('zones_empty')}</Text>
             </View>
           ) : null}
         </View>
@@ -132,7 +134,7 @@ export function GeozonesScreen({ navigation }: Props) {
         {items.length === 0 ? (
           <View style={styles.empty}>
             <TailioBlob size={120} />
-            <Button label="+ Создать" onPress={() => setHint(true)} />
+            <Button label={t('zones_create')} onPress={() => setHint(true)} />
           </View>
         ) : (
           items.map((item) => (
@@ -148,8 +150,8 @@ export function GeozonesScreen({ navigation }: Props) {
                 </View>
                 <Text style={styles.cardMeta}>{item.address}</Text>
                 <Text style={styles.cardMeta}>
-                  {item.kind === 'safe' ? 'Безопасная' : 'Опасная'}
-                  {item.bounds ? ' · на карте' : ' · без координат'}
+                  {item.kind === 'safe' ? t('zones_safeOne') : t('zones_dangerOne')}
+                  {item.bounds ? t('zones_onMap') : t('zones_withoutCoordinates')}
                 </Text>
               </View>
             </Pressable>
@@ -158,17 +160,16 @@ export function GeozonesScreen({ navigation }: Props) {
       </ScrollView>
 
       <View style={styles.fabWrap}>
-        <Button label="+ Создать" onPress={() => setHint(true)} />
+        <Button label={t('zones_create')} onPress={() => setHint(true)} />
       </View>
 
       <InAppSheet visible={hint} onClose={() => setHint(false)}>
-        <Text style={styles.sheetTitle}>Безопасные и опасные зоны</Text>
+        <Text style={styles.sheetTitle}>{t('zones_infoTitle')}</Text>
         <Text style={styles.cardMeta}>
-          Нарисуйте квадрат на карте. Выход из безопасной зоны — мягкий сигнал; приближение и вход в
-          опасную — тревожный. Сохранённые зоны можно изменить или удалить.
+          {t('zones_infoCopy')}
         </Text>
         <Button
-          label="Создать"
+          label={t('common_create')}
           onPress={() => {
             setHint(false);
             navigation.navigate('DrawZone', { kind: 'safe' });
@@ -177,34 +178,33 @@ export function GeozonesScreen({ navigation }: Props) {
       </InAppSheet>
 
       <InAppSheet visible={Boolean(selected) && !confirmDelete} onClose={closeSheet}>
-        <Text style={styles.sheetTitle}>{selected?.title ?? 'Зона'}</Text>
+        <Text style={styles.sheetTitle}>{selected?.title ?? t('zones_zone')}</Text>
         <Text style={styles.cardMeta}>
           {selected?.address}
           {'\n'}
-          {selected?.kind === 'safe' ? 'Безопасная' : 'Опасная'}
-          {selected?.bounds ? ' · на карте' : ' · без координат'}
+          {selected?.kind === 'safe' ? t('zones_safeOne') : t('zones_dangerOne')}
+          {selected?.bounds ? t('zones_onMap') : t('zones_withoutCoordinates')}
         </Text>
-        <Button label="Изменить на карте" onPress={startEdit} />
+        <Button label={t('zones_editOnMap')} onPress={startEdit} />
         <Pressable
           style={styles.deleteBtn}
           onPress={() => setConfirmDelete(true)}
           accessibilityRole="button"
-          accessibilityLabel="Удалить зону"
+          accessibilityLabel={t('zones_delete')}
         >
           <Ionicons name="trash-outline" size={18} color={colors.red} />
-          <Text style={styles.deleteText}>Удалить зону</Text>
+          <Text style={styles.deleteText}>{t('zones_delete')}</Text>
         </Pressable>
       </InAppSheet>
 
       <InAppSheet visible={Boolean(selected) && confirmDelete} onClose={() => setConfirmDelete(false)}>
-        <Text style={styles.sheetTitle}>Удалить «{selected?.title}»?</Text>
+        <Text style={styles.sheetTitle}>{t('zones_deleteTitle', { name: selected?.title ?? '' })}</Text>
         <Text style={styles.cardMeta}>
-          Зона исчезнет с карты, сигнализация по ней перестанет срабатывать. Это действие нельзя
-          отменить.
+          {t('zones_deleteCopy')}
         </Text>
-        <Button label="Удалить" onPress={doDelete} />
+        <Button label={t('common_delete')} onPress={doDelete} />
         <Pressable style={styles.cancelBtn} onPress={() => setConfirmDelete(false)}>
-          <Text style={styles.cancelText}>Отмена</Text>
+          <Text style={styles.cancelText}>{t('common_cancel')}</Text>
         </Pressable>
       </InAppSheet>
     </SafeAreaView>
