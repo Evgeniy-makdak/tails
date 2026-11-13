@@ -7,10 +7,6 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-/**
- * Painted green map shell (MAP_ENGINE=demo).
- * Park zone / pins stay in MapScreen so SOS overlays behave exactly as today.
- */
 export function DemoMapSurface({ previewScale = 1, children, style }: Props) {
   return (
     <View style={[styles.root, style, { transform: [{ scale: previewScale }] }]}>

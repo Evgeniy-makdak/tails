@@ -1,7 +1,6 @@
 import type { CollarLocationProvider } from '../CollarLocationProvider';
 import type { CollarLocationListener, CollarLocationSnapshot, CollarLocationSubscribeOptions } from '../types';
 
-/** Same coords as the current MapScreen demo pill. */
 export const DEMO_PET_COORDINATES = {
   latitude: 59.9362,
   longitude: 30.3141,
@@ -23,9 +22,6 @@ function buildDemoSnapshot(options: CollarLocationSubscribeOptions): CollarLocat
   };
 }
 
-/**
- * Keeps current demo behaviour: fixed SPb point, optional tiny jitter for SOS feel later.
- */
 export function createDemoCollarLocationProvider(): CollarLocationProvider {
   return {
     id: 'demo',

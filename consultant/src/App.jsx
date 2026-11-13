@@ -5,7 +5,6 @@ import { createChatSocket } from './socket.js';
 const TOKEN_KEY = 'tailio_consultant_token';
 const PROFILE_KEY = 'tailio_consultant_profile';
 const API_HOST_KEY = 'tailio_consultant_api';
-/** Same backend as phone/Pages (Render). Tokens from local :8787 are invalid here. */
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function clearStoredSession() {

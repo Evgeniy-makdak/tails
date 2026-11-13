@@ -1,4 +1,3 @@
-/** Single fix: pet collar location (owner phone GPS is not used). */
 export type PetGeoPoint = {
   latitude: number;
   longitude: number;
@@ -6,7 +5,6 @@ export type PetGeoPoint = {
   altitudeM?: number;
   speedMps?: number;
   headingDeg?: number;
-  /** ISO timestamp from collar / server */
   updatedAt: string;
 };
 
@@ -16,7 +14,6 @@ export type CollarLocationSnapshot = {
   point: PetGeoPoint;
   batteryPercent?: number;
   online: boolean;
-  /** Raw provider label for debug */
   source: 'demo' | 'api' | 'device';
 };
 
@@ -25,6 +22,5 @@ export type CollarLocationListener = (snapshot: CollarLocationSnapshot | null) =
 export type CollarLocationSubscribeOptions = {
   petId: string;
   collarId?: string;
-  /** Polling / push hint; providers may ignore */
   intervalMs?: number;
 };

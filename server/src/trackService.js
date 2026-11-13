@@ -2,7 +2,6 @@ import { v4 as uuid } from 'uuid';
 
 import { findMany, insert, findById, nowIso, removeById, removeWhere } from './db.js';
 
-/** Keep Render Free disk/egress small. */
 export const MAX_TRACKS_PER_USER = 12;
 export const MAX_POINTS_PER_TRACK = 120;
 
@@ -28,7 +27,6 @@ function pathDistanceM(points) {
   return sum;
 }
 
-/** Evenly keep first/last + mid samples so uploads stay tiny. */
 export function downsamplePoints(points, maxPoints = MAX_POINTS_PER_TRACK) {
   if (!points?.length) return [];
   if (points.length <= maxPoints) return points;
@@ -141,7 +139,6 @@ export function deleteTrackForUser(userId, trackId) {
   return removeById('walks', trackId) > 0;
 }
 
-/** Wipe all walks for a user (or only demos) — frees Render Free storage. */
 export function deleteTracksForUser(userId, { onlyDemo = false } = {}) {
   return removeWhere('walks', (w) => {
     if (w.user_id !== userId) return false;

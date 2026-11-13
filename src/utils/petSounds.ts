@@ -30,7 +30,6 @@ async function unloadActive() {
   }
 }
 
-/** Plays dog woof or cat meow from assets/sounds for a few seconds. */
 export async function playPetCall(kind: PetKind): Promise<boolean> {
   try {
     await unloadActive();

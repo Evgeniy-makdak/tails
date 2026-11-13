@@ -58,7 +58,6 @@ export const db = {
 };
 
 export function migrate() {
-  // JSON store bootstraps itself; ensure all collections exist.
   state = { ...emptyDb(), ...state };
   persist();
 }

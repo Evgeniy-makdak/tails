@@ -173,7 +173,6 @@ export function createApiRouter() {
     });
   });
 
-  /** List GPS tracks / walks for the signed-in app user (pet history). */
   router.get('/tracks', authMiddleware, requireRole('user'), (req, res) => {
     const petId = req.query.petId ? String(req.query.petId) : undefined;
     const tracks = listTracksForUser(req.auth.id, {
@@ -192,7 +191,6 @@ export function createApiRouter() {
     res.json({ track });
   });
 
-  /** Collar / client upload of a finished track (points required, auto-downsampled). */
   router.post('/tracks', authMiddleware, requireRole('user'), (req, res) => {
     try {
       const track = createTrack({
@@ -222,17 +220,12 @@ export function createApiRouter() {
     res.json({ ok: true });
   });
 
-  /** Clear history to stay within Render Free limits. ?demo=1 removes only seeded demos. */
   router.delete('/tracks', authMiddleware, requireRole('user'), (req, res) => {
     const onlyDemo = req.query.demo === '1' || req.body?.onlyDemo === true;
     const removed = deleteTracksForUser(req.auth.id, { onlyDemo });
     res.json({ ok: true, removed });
   });
 
-  /**
-   * Live collar point for the app (LOCATION_MODE=api).
-   * Public read for pilot — tighten with user auth once accounts are server-side.
-   */
   router.get('/collars/:id/location', (req, res) => {
     const row = getCollarLocation(req.params.id);
     if (!row) {
@@ -246,10 +239,7 @@ export function createApiRouter() {
     res.json(dto);
   });
 
-  /**
-   * Ingest from adapter / curl / OEM.
-   * Header: X-Collar-Ingest-Key (env COLLAR_INGEST_SECRET).
-   */
+  // X-Collar-Ingest-Key = COLLAR_INGEST_SECRET
   router.post('/collars/:id/telemetry', (req, res) => {
     if (!assertIngestKey(req)) {
       res.status(401).json({ error: 'unauthorized' });
@@ -268,10 +258,6 @@ export function createApiRouter() {
     }
   });
 
-  /**
-   * Traccar position forward / webhook.
-   * Body may be { position, device } or a flat position object.
-   */
   router.post('/collars/ingest/traccar', (req, res) => {
     if (!assertIngestKey(req)) {
       res.status(401).json({ error: 'unauthorized' });

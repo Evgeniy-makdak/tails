@@ -8,7 +8,6 @@ export type MapLatLng = {
 export type MapMarker = {
   id: string;
   coordinate: MapLatLng;
-  /** 'pet' | 'sos-ghost' | custom */
   kind: 'pet' | 'sos-ghost' | 'generic';
 };
 
@@ -29,7 +28,6 @@ export type MapPolyline = {
 
 export type MapPolygon = {
   id: string;
-  /** Ring without mandatory closing point (lon/lat order handled downstream). */
   ring: MapLatLng[];
   color: string;
   strokeColor?: string;
@@ -46,14 +44,8 @@ export type MapCanvasProps = {
   circles?: MapCircle[];
   polylines?: MapPolyline[];
   polygons?: MapPolygon[];
-  /**
-   * Bump to force camera back to `camera.center` + zoom (clears “user panned” lock).
-   * Used by the recenter control.
-   */
   followKey?: number;
-  /** Fired when the user pans/zooms the live map (MapLibre). */
   onCameraChange?: (camera: MapCamera) => void;
-  /** Visual zoom multiplier used by demo surface (CSS scale). MapLibre will use camera.zoom. */
   previewScale?: number;
   children?: ReactNode;
   style?: object;

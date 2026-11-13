@@ -52,9 +52,7 @@ export function DrawZoneScreen({ navigation, route }: Props) {
 
   const petPoint = point ?? mapConfig.defaultCamera.center;
   const initialCenter = editing?.bounds ? boundsCenter(editing.bounds) : petPoint;
-  /** Independent zone anchor — can be dragged away from the pet. */
   const [zoneCenter, setZoneCenter] = useState<MapLatLng>(initialCenter);
-  /** Map camera center — pan separately from the zone. */
   const [mapCenter, setMapCenter] = useState<MapLatLng>(initialCenter);
   const seededRef = useRef(isEdit);
   const dragOriginRef = useRef<MapLatLng | null>(null);

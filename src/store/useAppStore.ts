@@ -141,9 +141,13 @@ export const useAppStore = create<AppState>()(
         setOnboardingSex: (kind, boy) => {
           const sex: PetSex = kind === 'cat' ? (boy ? 'Кот' : 'Кошка') : boy ? 'Кобель' : 'Сука';
           const draft = get().onboarding;
-          const nextBreed = breedMatchesKind(draft.breed, kind) ? draft.breed : '';
           set({
-            onboarding: { ...draft, kind, sex, breed: nextBreed },
+            onboarding: {
+              ...draft,
+              kind,
+              sex,
+              breed: breedMatchesKind(draft.breed, kind) ? draft.breed : '',
+            },
           });
         },
         finishOnboarding: (collarConnected) => {

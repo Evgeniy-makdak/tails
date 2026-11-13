@@ -1,6 +1,5 @@
 import type { MapCamera, MapCircle, MapLatLng, MapMarker, MapPolygon, MapPolyline } from './types';
 
-/** Serializable snapshot pushed into MapLibre (web DOM or native WebView). */
 export type MapScene = {
   camera: MapCamera;
   markers: MapMarker[];

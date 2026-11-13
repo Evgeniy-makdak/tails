@@ -1,10 +1,5 @@
 import { findOne, insert, nowIso, updateById } from './db.js';
 
-/**
- * Collar last_location store + ingest for TK919 / Traccar / OEM adapters.
- * Collection: collar_locations (keyed by collarId).
- */
-
 function normalizeCollarId(id) {
   return String(id || '')
     .trim()
@@ -17,9 +12,6 @@ export function getCollarLocation(collarId) {
   return findOne('collar_locations', (row) => row.collarId === id) || null;
 }
 
-/**
- * Upsert last known point. Returns public DTO for GET /collars/:id/location.
- */
 export function upsertCollarTelemetry(collarId, body = {}) {
   const id = normalizeCollarId(collarId);
   if (!id) {
@@ -71,10 +63,6 @@ export function upsertCollarTelemetry(collarId, body = {}) {
   return toPublicDto(row);
 }
 
-/**
- * Map Traccar position webhook / forward payload into our upsert shape.
- * @see https://www.traccar.org/configuration-file/ (forward.url)
- */
 export function mapTraccarPosition(payload = {}) {
   const pos = payload.position || payload;
   const device = payload.device || {};

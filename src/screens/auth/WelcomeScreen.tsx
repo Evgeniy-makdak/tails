@@ -16,7 +16,6 @@ export function WelcomeScreen({ onStart, onLogin }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  // Usable height inside safe area — scale mascot so header + CTA always fit.
   const available = Math.max(480, height - insets.top - insets.bottom);
   const compact = available < 700;
   const tight = available < 640;

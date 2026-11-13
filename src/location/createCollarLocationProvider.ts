@@ -19,7 +19,6 @@ export function getCollarLocationProvider(): CollarLocationProvider {
   return singleton;
 }
 
-/** Test helper — reset after changing env in tests. */
 export function resetCollarLocationProvider() {
   singleton = null;
 }

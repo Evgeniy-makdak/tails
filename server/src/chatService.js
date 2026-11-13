@@ -64,7 +64,6 @@ export function getMessages(conversationId) {
     .map(mapMessage);
 }
 
-/** Status rank: keep the liveliest thread as the single primary chat per user. */
 function statusRank(status) {
   if (status === 'active') return 3;
   if (status === 'waiting') return 2;
@@ -72,10 +71,6 @@ function statusRank(status) {
   return 0;
 }
 
-/**
- * One user → one conversation. Moves all messages onto the primary thread and drops duplicates.
- * Call before queue/history/ensure so the desk never shows several cards for the same person.
- */
 export function consolidateUserConversations(userId) {
   const rows = findMany('conversations', (c) => c.user_id === userId);
   if (rows.length <= 1) {
@@ -96,7 +91,6 @@ export function consolidateUserConversations(userId) {
     for (const msg of msgs) {
       updateById('messages', msg.id, { conversation_id: primary.id });
     }
-    // Keep last known consultant/pet if primary lacks them
     if (!primary.consultant_id && extra.consultant_id) {
       updateById('conversations', primary.id, { consultant_id: extra.consultant_id });
     }
@@ -113,7 +107,6 @@ export function consolidateUserConversations(userId) {
   return getConversationById(primary.id);
 }
 
-/** Merge every user that somehow got multiple threads (legacy / bugs). */
 export function consolidateAllUsers() {
   const userIds = [...new Set(findMany('conversations', () => true).map((c) => c.user_id))];
   for (const userId of userIds) {
@@ -122,7 +115,6 @@ export function consolidateAllUsers() {
 }
 
 export function listWaitingQueue() {
-  // Dedupe by user: at most one waiting card per owner
   const waiting = findMany('conversations', (c) => c.status === 'waiting');
   const byUser = new Map();
   for (const row of waiting) {
@@ -166,10 +158,6 @@ export function listConsultantActive(consultantId) {
     .map(enrichConversation);
 }
 
-/**
- * Archive: one card per user (stitched thread), not per close-session.
- * Includes users this consultant last handled whose thread is currently closed.
- */
 export function listConsultantHistory(consultantId, limit = 40) {
   const closed = findMany(
     'conversations',
@@ -179,7 +167,6 @@ export function listConsultantHistory(consultantId, limit = 40) {
   for (const row of closed) {
     const primary = consolidateUserConversations(row.user_id);
     if (!primary || primary.status !== 'closed') continue;
-    // After merge, consultant may still be on the primary closed thread
     const fresh = findById('conversations', primary.id);
     if (!fresh || fresh.consultant_id !== consultantId || fresh.status !== 'closed') continue;
     const prev = byUser.get(fresh.user_id);
@@ -196,10 +183,6 @@ export function listConsultantHistory(consultantId, limit = 40) {
     .map(enrichConversation);
 }
 
-/**
- * Reopen a closed conversation into the waiting queue, keeping message history.
- * Clears claim so any consultant can take it again.
- */
 export function reopenConversation(conversationId) {
   let row = findById('conversations', conversationId);
   if (!row) {
@@ -226,7 +209,6 @@ export function reopenConversation(conversationId) {
 }
 
 export function ensureUserConversation(userId, petId = null) {
-  // Always collapse duplicates first → one continuous history per owner
   let primary = consolidateUserConversations(userId);
 
   if (primary) {
@@ -412,5 +394,4 @@ export function upsertAppUser({ email, name, city, pet }) {
   return { user, pet: petRow };
 }
 
-// silence unused in case tree-shaking tools look at db export usage
 void db;

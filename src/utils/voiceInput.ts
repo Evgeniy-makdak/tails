@@ -34,10 +34,6 @@ function getWebSpeechCtor(): SpeechRecognitionCtor | null {
 
 const DEMO_PHRASE_KEYS: MessageKey[] = ['chat_voiceDemo1', 'chat_voiceDemo2', 'chat_voiceDemo3'];
 
-/**
- * Starts voice capture. Uses Web Speech API when available;
- * otherwise returns a short demo transcript after a listening pause.
- */
 export function startVoiceCapture(options?: {
   lang?: string;
   timeoutMs?: number;
@@ -113,7 +109,6 @@ export function startVoiceCapture(options?: {
       }
     }
 
-    // Native / unsupported: simulate short listening window, then demo phrase.
     timer = setTimeout(() => {
       const phraseKey =
         DEMO_PHRASE_KEYS[Math.floor(Math.random() * DEMO_PHRASE_KEYS.length)] ?? 'chat_voiceDemo1';

@@ -4,15 +4,12 @@ import { PanResponder, StyleSheet, View } from 'react-native';
 import { colors } from '../theme';
 
 type Props = {
-  /** Full side length of the square in screen pixels. */
   sidePx: number;
-  /** Offset from the map viewport center (px). */
   offsetX: number;
   offsetY: number;
   strokeColor: string;
   fillColor: string;
   onResize: (nextSidePx: number) => void;
-  /** Drag the whole square (screen px delta from gesture start). */
   onMove: (dx: number, dy: number) => void;
   onMoveEnd?: () => void;
   minSidePx?: number;
@@ -28,10 +25,6 @@ const CORNERS: Corner[] = [
   { key: 'br', sx: 1, sy: 1 },
 ];
 
-/**
- * Movable + resizable square overlay for geofence editing.
- * Parent converts screen deltas ↔ lat/lng.
- */
 export function ZoneResizeOverlay({
   sidePx,
   offsetX,

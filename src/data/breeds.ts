@@ -8,7 +8,6 @@ export type BreedEntry = {
   en: string;
 };
 
-/** Stable id catalog; UI shows locale label, storage keeps `id` (legacy RU/EN names still resolve). */
 export const BREED_CATALOG: BreedEntry[] = [
   // Dogs
   { id: 'labrador', kind: 'dog', ru: 'Лабрадор', en: 'Labrador Retriever' },
@@ -105,7 +104,6 @@ export function breedLabel(entry: BreedEntry, locale: Locale): string {
   return locale === 'en' ? entry.en : entry.ru;
 }
 
-/** Localized label for stored breed id or legacy free-text name. */
 export function breedDisplayName(value: string, locale: Locale): string {
   const found = findBreed(value);
   if (found) return breedLabel(found, locale);

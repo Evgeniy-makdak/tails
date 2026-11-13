@@ -17,14 +17,11 @@ export function PhoneShell({ children }: Props) {
   const showPreview = useWebPhonePreview();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  // Mobile / tablet / PWA: unchanged full-screen shell.
   if (Platform.OS !== 'web' || !showPreview) {
     return <View style={styles.fullscreen}>{children}</View>;
   }
 
-  // Desktop emulator only: outer size must include the bezel. RN Web uses
-  // border-box, so width===PHONE_WIDTH*scale left the scaled screen wider than
-  // the content box and clipped content on the right.
+  // Outer size includes bezel — RN Web border-box otherwise clips the scaled screen.
   const scale = Math.min(
     1,
     (windowHeight - PAGE_PADDING * 2) / (PHONE_HEIGHT + BEZEL * 2),

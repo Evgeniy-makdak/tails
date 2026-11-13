@@ -177,7 +177,6 @@ function handleMessage(ws, msg, helpers) {
         'conversation.assigned',
         { conversation: result.conversation },
       );
-      // Notify other consultants that item left the queue
       broadcast(
         (a) => a.role === 'consultant' && a.id !== auth.id,
         'conversation.taken',
@@ -186,7 +185,6 @@ function handleMessage(ws, msg, helpers) {
       publishQueue();
       publishActiveForConsultant(auth.id);
       publishHistoryForConsultant(auth.id);
-      // Push latest system message to user
       const last = messages[messages.length - 1];
       if (last) {
         broadcast(
@@ -201,7 +199,6 @@ function handleMessage(ws, msg, helpers) {
     }
 
     case 'conversation.open': {
-      // Consultant opens an already-claimed active chat or archived history
       if (auth.role !== 'consultant') {
         send(ws, 'error', { code: 'forbidden' });
         return;
@@ -230,7 +227,6 @@ function handleMessage(ws, msg, helpers) {
         return;
       }
 
-      // User resume: closed → waiting queue with full history preserved
       if (conversation.status === 'closed' && auth.role === 'user') {
         if (conversation.userId !== auth.id) {
           send(ws, 'error', { code: 'forbidden' });
@@ -281,7 +277,6 @@ function handleMessage(ws, msg, helpers) {
         text,
       });
 
-      // If user messaged a brand-new waiting chat, refresh queue previews
       if (auth.role === 'user' && conversation.status === 'waiting') {
         publishQueue();
       }
@@ -291,7 +286,6 @@ function handleMessage(ws, msg, helpers) {
         if (a.role === 'consultant' && conversation.consultantId && a.id === conversation.consultantId) {
           return true;
         }
-        // Waiting dialogs: all consultants see new user messages via queue; also push message if they have it open
         if (a.role === 'consultant' && conversation.status === 'waiting') return false;
         return false;
       }, 'message.new', { message });

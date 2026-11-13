@@ -3,11 +3,8 @@ import { DEFAULT_MAP_STYLE_URL, DEFAULT_TILES } from './tiles';
 import type { MapCamera } from './types';
 
 export const mapConfig = {
-  /** OpenFreeMap Liberty (vector) — free, no API key. */
   styleUrl: DEFAULT_MAP_STYLE_URL,
-  /** Raster fallback metadata (tests / offline stubs). */
   tiles: DEFAULT_TILES,
-  /** Default camera before first GPS fix (SPb). */
   defaultCamera: {
     center: {
       latitude: DEMO_PET_COORDINATES.latitude,

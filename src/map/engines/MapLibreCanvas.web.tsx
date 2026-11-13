@@ -103,10 +103,6 @@ function syncMarkers(
   }
 }
 
-/**
- * Real MapLibre GL map on web (GitHub Pages / Expo web).
- * Tiles: OpenFreeMap Liberty — free, no API key.
- */
 export function MapLibreCanvas({
   camera,
   markers = [],
@@ -122,7 +118,6 @@ export function MapLibreCanvas({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef(new Map<string, maplibregl.Marker>());
   const readyRef = useRef(false);
-  /** User dragged the map — stop auto-centering on GPS until followKey bumps. */
   const userPanningRef = useRef(false);
   const lastFollowKeyRef = useRef(followKey);
   const onCameraChangeRef = useRef(onCameraChange);
@@ -198,7 +193,6 @@ export function MapLibreCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Recenter control: always unlock follow and fly to pet.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
@@ -212,7 +206,6 @@ export function MapLibreCanvas({
     });
   }, [followKey, center.latitude, center.longitude, zoom]);
 
-  // Zoom always applies. Center follows GPS only while not user-panned.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;

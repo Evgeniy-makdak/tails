@@ -5,11 +5,6 @@ import { DemoMapSurface } from './DemoMapSurface';
 import { MapLibreCanvas } from './engines/MapLibreCanvas';
 import type { MapCanvasProps } from './types';
 
-/**
- * Single entry for map rendering.
- * - maplibre (default): OpenFreeMap tiles via MapLibre
- * - demo: painted green Figma mock
- */
 export function MapCanvas({
   previewScale = 1,
   children,

@@ -1,13 +1,6 @@
 import { api } from './client';
 import type { CollarLocationSnapshot, CollarLocationSubscribeOptions } from '../location/types';
 
-/**
- * Contract for collar backend. Paths are placeholders — adjust when API is final.
- * Expected response shape (example):
- * {
- *   petId, collarId, latitude, longitude, accuracyM, batteryPercent, online, updatedAt
- * }
- */
 export type CollarLocationApiDto = {
   petId: string;
   collarId?: string;
@@ -41,10 +34,6 @@ export function mapCollarDtoToSnapshot(dto: CollarLocationApiDto): CollarLocatio
   };
 }
 
-/**
- * GET collar location. Returns null while endpoint is not deployed
- * (404 / network) so ApiCollarLocationProvider can fall back to demo.
- */
 export async function fetchCollarLocation(
   options: CollarLocationSubscribeOptions,
 ): Promise<CollarLocationSnapshot | null> {
@@ -61,14 +50,9 @@ export async function fetchCollarLocation(
   return mapCollarDtoToSnapshot(data);
 }
 
-/**
- * Future: open WebSocket / SSE for push updates.
- * Keep signature stable so providers can switch from polling without UI changes.
- */
 export function subscribeCollarLocationStream(
   _options: CollarLocationSubscribeOptions,
   _onMessage: (snapshot: CollarLocationSnapshot) => void,
 ): () => void {
-  // Placeholder — implement when collar backend exposes a stream.
   return () => undefined;
 }

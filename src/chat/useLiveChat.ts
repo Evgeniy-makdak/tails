@@ -10,7 +10,6 @@ function tr(key: 'chat_emailRequired' | 'chat_error' | 'chat_serverOffline' | 'c
   return translate(useLocaleStore.getState().locale, key);
 }
 
-/** Client welcome + any older welcome variants stored in history. */
 function isWelcomeLike(text: string) {
   return /^Добро пожаловать в Taily/i.test(text.trim()) || /^Welcome to Taily/i.test(text.trim());
 }

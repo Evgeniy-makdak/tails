@@ -7,7 +7,6 @@ export async function resetAppData(): Promise<void> {
   await AsyncStorage.removeItem(APP_STORAGE_KEY);
 }
 
-/** Hidden reset for demos: open the app with ?reset=1 in the URL. */
 export function tryResetFromUrl(): boolean {
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
     return false;

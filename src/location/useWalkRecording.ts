@@ -10,10 +10,6 @@ import {
   useWalkRecordingStore,
 } from './walkRecordingStore';
 
-/**
- * Keeps sampling GPS while a walk is active — even if user leaves the Map tab
- * (in-app "background"). True OS background is limited on web/Pages.
- */
 export function useWalkRecordingController(enabled: boolean) {
   const active = useWalkRecordingStore((s) => s.active);
   const appendPoint = useWalkRecordingStore((s) => s.appendPoint);

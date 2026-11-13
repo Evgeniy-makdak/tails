@@ -73,10 +73,8 @@ export function MapScreen() {
   const [actionSheet, setActionSheet] = useState<SosActionSheet>(null);
   const [shareHint, setShareHint] = useState('');
   const [soundOn, setSoundOn] = useState(false);
-  /** Demo surface CSS scale; live map uses mapZoom instead. */
   const [previewScale, setPreviewScale] = useState(1);
   const [mapZoom, setMapZoom] = useState(mapConfig.defaultCamera.zoom);
-  /** Bump to force MapLibre back onto the pet after the user panned away. */
   const [followKey, setFollowKey] = useState(0);
   const lightPulse = useRef(new Animated.Value(0)).current;
   const foundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

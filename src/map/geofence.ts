@@ -5,7 +5,6 @@ const EARTH_RADIUS_M = 6371008.8;
 
 export type GeofenceKind = 'allowed' | 'forbidden' | 'home';
 
-/** Destination point from start, distance (m) and bearing (deg clockwise from north). */
 export function offsetPoint(start: MapLatLng, distanceM: number, bearingDeg: number): MapLatLng {
   const δ = distanceM / EARTH_RADIUS_M;
   const θ = (bearingDeg * Math.PI) / 180;
@@ -24,12 +23,10 @@ export function offsetPoint(start: MapLatLng, distanceM: number, bearingDeg: num
   };
 }
 
-/** Approximate meters-per-pixel at a latitude and zoom (WebMercator). */
 export function metersPerPixel(latitude: number, zoom: number): number {
   return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
 }
 
-/** Screen px east/south from map camera center → geographic offset. */
 export function screenDeltaToLatLngDelta(
   dxPx: number,
   dyPx: number,
@@ -44,7 +41,6 @@ export function screenDeltaToLatLngDelta(
   return { dLat, dLng };
 }
 
-/** Geographic point relative to camera → screen px from viewport center. */
 export function latLngDeltaToScreenPx(
   point: MapLatLng,
   camera: MapLatLng,
@@ -59,7 +55,6 @@ export function latLngDeltaToScreenPx(
   return { x: metersEast / mpp, y: -metersNorth / mpp };
 }
 
-/** Square geofence: halfSideM from center to each side. */
 export function squareBoundsFromCenter(center: MapLatLng, halfSideM: number): GeoZoneBounds {
   const north = offsetPoint(center, halfSideM, 0).latitude;
   const south = offsetPoint(center, halfSideM, 180).latitude;
@@ -75,7 +70,6 @@ export function boundsCenter(bounds: GeoZoneBounds): MapLatLng {
   };
 }
 
-/** Half of the north–south extent in meters (approx). */
 export function boundsHalfSideM(bounds: GeoZoneBounds): number {
   const center = boundsCenter(bounds);
   const north = { latitude: bounds.north, longitude: center.longitude };
@@ -104,7 +98,6 @@ export function pointInBounds(point: MapLatLng, bounds: GeoZoneBounds): boolean 
   );
 }
 
-/** Positive = outside (meters to nearest edge); negative = inside. */
 export function signedDistanceOutsideBoundsM(point: MapLatLng, bounds: GeoZoneBounds): number {
   const minLng = Math.min(bounds.west, bounds.east);
   const maxLng = Math.max(bounds.west, bounds.east);
@@ -151,7 +144,6 @@ export function boundsToPolygon(
   };
 }
 
-/** Approximate geodesic circle as GeoJSON polygon (lon, lat rings). */
 export function circleToLonLatRing(center: MapLatLng, radiusM: number, steps = 64): [number, number][] {
   const ring: [number, number][] = [];
   for (let i = 0; i <= steps; i += 1) {

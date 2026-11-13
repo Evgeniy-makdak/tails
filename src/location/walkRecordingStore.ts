@@ -5,7 +5,6 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { TrackPoint } from '../api/tracks';
 
 const STORAGE_KEY = 'hvostik.walk-recording.v1';
-/** Sample GPS while walking — sparse to keep Render Free payloads small. */
 export const WALK_SAMPLE_INTERVAL_MS = 8_000;
 export const WALK_MIN_MOVE_M = 12;
 export const WALK_MAX_LIVE_POINTS = 400;
@@ -94,11 +93,9 @@ export const useWalkRecordingStore = create<WalkRecordingState>()(
       petId: state.petId,
       petName: state.petName,
     };
-    /** Pause sampling; keep points until upload succeeds or user restarts. */
     set({ active: false });
     return snapshot;
   },
-  /** Call after successful upload (or discard). */
   clearAfterStop: () =>
     set({
       active: false,

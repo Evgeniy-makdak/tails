@@ -18,7 +18,6 @@ export type GeoZone = {
   title: string;
   address: string;
   kind: 'safe' | 'danger';
-  /** Axis-aligned geofence on the real map. Optional for legacy zones. */
   bounds?: GeoZoneBounds;
 };
 

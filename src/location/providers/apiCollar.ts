@@ -3,10 +3,6 @@ import type { CollarLocationProvider } from '../CollarLocationProvider';
 import type { CollarLocationListener, CollarLocationSubscribeOptions } from '../types';
 import { createDemoCollarLocationProvider } from './demoCollar';
 
-/**
- * Ready for collar backend. Until API exists, falls back to demo so UI never breaks.
- * Flip EXPO_PUBLIC_LOCATION_MODE=api when endpoint is live.
- */
 export function createApiCollarLocationProvider(): CollarLocationProvider {
   const fallback = createDemoCollarLocationProvider();
 

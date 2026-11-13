@@ -197,10 +197,6 @@ function buildHtml(styleUrl: string) {
 </html>`;
 }
 
-/**
- * Native MapLibre via WebView (Expo Go friendly).
- * Same OpenFreeMap style as web — no Google/Yandex keys.
- */
 export function MapLibreCanvas({
   camera,
   markers = [],

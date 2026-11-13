@@ -44,7 +44,6 @@ async function playToneSequence(tones: Tone[]): Promise<boolean> {
   }
 }
 
-/** Soft double-chime: left a safe geofence. */
 export async function playSafeZoneExitAlert(): Promise<void> {
   const ok = await playToneSequence([
     { freq: 660, ms: 160, gap: 90, type: 'sine', gain: 0.16 },
@@ -55,7 +54,6 @@ export async function playSafeZoneExitAlert(): Promise<void> {
   }
 }
 
-/** Urgent alarm: approaching / entered a danger geofence. */
 export async function playDangerZoneEnterAlert(): Promise<void> {
   const ok = await playToneSequence([
     { freq: 880, ms: 120, gap: 50, type: 'square', gain: 0.2 },

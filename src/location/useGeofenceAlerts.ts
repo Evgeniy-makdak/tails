@@ -15,11 +15,6 @@ type ZonePresence = {
   primed: boolean;
 };
 
-/**
- * Watches pet GPS against saved geozones and plays:
- * - soft chime when leaving a safe zone
- * - alarm when approaching / entering a danger zone
- */
 export function useGeofenceAlerts(enabled = true) {
   const pet = useActivePet();
   const zones = useAppStore((s) => s.geozones);

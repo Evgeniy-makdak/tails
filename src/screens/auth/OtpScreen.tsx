@@ -189,7 +189,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     opacity: 0.01,
     color: 'transparent',
-    // Hide browser focus ring around the invisible OTP field on web / PWA
     ...(Platform.OS === 'web'
       ? ({
           outlineStyle: 'none',

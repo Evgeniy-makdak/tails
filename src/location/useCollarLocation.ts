@@ -10,10 +10,6 @@ type Options = {
   enabled?: boolean;
 };
 
-/**
- * Subscribe to pet location.
- * Default provider = device GPS (stand-in for collar); demo/api via EXPO_PUBLIC_LOCATION_MODE.
- */
 export function useCollarLocation({ petId, collarId, intervalMs, enabled = true }: Options) {
   const [snapshot, setSnapshot] = useState<CollarLocationSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);

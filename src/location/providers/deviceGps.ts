@@ -20,11 +20,7 @@ type Coords = {
 
 type SharedListener = (coords: Coords) => void;
 
-/**
- * One shared GPS stream for the whole app.
- * Multiple watchPosition calls (map + geofence + history) are unreliable in browsers —
- * they often deliver only the first fix and then go silent until reload.
- */
+// Shared watch — browsers mishandle multiple concurrent watchPosition calls.
 let sharedListeners = new Set<SharedListener>();
 let sharedStop: (() => void) | null = null;
 let sharedLast: Coords | null = null;
@@ -89,7 +85,6 @@ function startBrowserWatch() {
     geoOpts,
   );
 
-  /** Browsers often starve watchPosition while moving — poll as a backup. */
   const pollId = setInterval(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => broadcast(coordsFromBrowser(pos)),
@@ -184,11 +179,6 @@ function subscribeShared(listener: SharedListener) {
   };
 }
 
-/**
- * Temporary stand-in for collar GPS: uses the phone / browser geolocation.
- * When collar API is ready, flip EXPO_PUBLIC_LOCATION_MODE=api.
- * Falls back to demo SPb point if permission is denied.
- */
 export function createDeviceCollarLocationProvider(): CollarLocationProvider {
   const fallback = createDemoCollarLocationProvider();
 

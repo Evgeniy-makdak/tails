@@ -7,7 +7,6 @@ import { colors, radius } from '../../theme';
 
 type Props = {
   style?: StyleProp<ViewStyle>;
-  /** When true, sit under the safe-area top inset (default). */
   respectSafeArea?: boolean;
 };
 
