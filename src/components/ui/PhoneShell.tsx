@@ -10,21 +10,27 @@ type Props = {
 
 const PHONE_WIDTH = 390;
 const PHONE_HEIGHT = 844;
+const BEZEL = 10;
 const PAGE_PADDING = 16;
 
 export function PhoneShell({ children }: Props) {
   const showPreview = useWebPhonePreview();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
+  // Mobile / tablet / PWA: unchanged full-screen shell.
   if (Platform.OS !== 'web' || !showPreview) {
     return <View style={styles.fullscreen}>{children}</View>;
   }
 
+  // Desktop emulator only: outer size must include the bezel. RN Web uses
+  // border-box, so width===PHONE_WIDTH*scale left the scaled screen wider than
+  // the content box and clipped content on the right.
   const scale = Math.min(
     1,
-    (windowHeight - PAGE_PADDING * 2) / PHONE_HEIGHT,
-    (windowWidth - PAGE_PADDING * 2) / PHONE_WIDTH,
+    (windowHeight - PAGE_PADDING * 2) / (PHONE_HEIGHT + BEZEL * 2),
+    (windowWidth - PAGE_PADDING * 2) / (PHONE_WIDTH + BEZEL * 2),
   );
+  const bezel = BEZEL * scale;
 
   return (
     <View style={styles.page}>
@@ -32,10 +38,10 @@ export function PhoneShell({ children }: Props) {
         style={[
           styles.device,
           {
-            width: PHONE_WIDTH * scale,
-            height: PHONE_HEIGHT * scale,
+            width: PHONE_WIDTH * scale + bezel * 2,
+            height: PHONE_HEIGHT * scale + bezel * 2,
             borderRadius: 44 * scale,
-            borderWidth: 10 * scale,
+            borderWidth: bezel,
           },
         ]}
       >
