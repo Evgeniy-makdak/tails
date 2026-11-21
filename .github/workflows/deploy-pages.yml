@@ -49,9 +49,10 @@ jobs:
           EXPO_PUBLIC_CHAT_LIVE: '1'
           EXPO_PUBLIC_API_URL: ${{ steps.chat.outputs.url }}
           EXPO_PUBLIC_MAP_ENGINE: maplibre
-          EXPO_PUBLIC_LOCATION_MODE: device
+          # Live pet marker from collar API (GET /api/collars/:id/location), not phone GPS.
+          EXPO_PUBLIC_LOCATION_MODE: api
         run: |
-          echo "Building live chat → $EXPO_PUBLIC_API_URL (map=maplibre, location=device)"
+          echo "Building → $EXPO_PUBLIC_API_URL (map=maplibre, location=api)"
           npm run build:web
           if ! grep -R -F "$EXPO_PUBLIC_API_URL" dist/_expo >/dev/null; then
             echo "::error::API URL was not inlined into the bundle"

@@ -1,0 +1,32 @@
+# Live collar path: HTTP/API + TCP for TK919 (adminip → this host).
+# Usage on a VPS with public IP:
+#   docker compose -f docker-compose.collar.yml up -d --build
+# Then SMS from phone to collar SIM:
+#   adminip123456 <PUBLIC_IP> 5001
+# App (GitHub Pages) with LOCATION_MODE=api reads:
+#   GET https://<HOST>/api/collars/<IMEI>/location
+
+services:
+  taily:
+    build: ./server
+    ports:
+      - "8787:8080"
+      - "5001:5001"
+      - "5093:5093"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      COLLAR_TCP_ENABLE: "1"
+      COLLAR_TCP_PORTS: "5001,5093"
+      # Forward each fix to your existing Render API (app already uses this host).
+      COLLAR_FORWARD_BASE: ${COLLAR_FORWARD_BASE:-https://tailio-chat.onrender.com}
+      COLLAR_INGEST_SECRET: ${COLLAR_INGEST_SECRET:-}
+      TAILIO_JWT_SECRET: ${TAILIO_JWT_SECRET:-change-me-in-production}
+      TAILIO_JWT_TTL: 7d
+      TAILIO_DB_PATH: /data/tailio.json
+    volumes:
+      - taily-data:/data
+    restart: unless-stopped
+
+volumes:
+  taily-data:

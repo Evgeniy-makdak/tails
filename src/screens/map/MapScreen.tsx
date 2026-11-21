@@ -58,6 +58,7 @@ export function MapScreen() {
   const { coordsLabel, point, source, snapshot } = useCollarLocation({
     petId: pet.id,
     collarId: pet.collarId,
+    intervalMs: 5000,
   });
   const {
     active: walkActive,

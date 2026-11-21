@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { hashPassword } from './auth.js';
 import { findOne, insert, migrate, nowIso } from './db.js';
 import { consolidateAllUsers } from './chatService.js';
+import { startCollarTcpGateway } from './collarTcp.js';
 import { createApiRouter } from './routes.js';
 import { attachWebSocket } from './wsHub.js';
 
@@ -47,6 +48,7 @@ attachWebSocket(server);
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Tailio server listening on http://0.0.0.0:${PORT}`);
   console.log(`WebSocket: ws://0.0.0.0:${PORT}/ws`);
+  startCollarTcpGateway();
 });
 
 function ensureSeedConsultant() {
